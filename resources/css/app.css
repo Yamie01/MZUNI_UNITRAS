@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* Logo styling */
+    .navbar-brand {
+        transition: opacity 0.3s ease;
+    }
+    
+    .navbar-brand:hover {
+        opacity: 0.8;
+    }
+    
+    .navbar-brand img {
+        border-radius: 50%;
+        background: white;
+        padding: 2px;
+    }
+    
+    /* For guest layout */
+    .guest-body .logo-small {
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+}

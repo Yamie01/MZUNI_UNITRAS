@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Http\Controllers\User;
+
+use App\Http\Controllers\Controller;
+use App\Models\VehicleAdvertisement;
+use App\Models\Bike;
+use App\Models\Booking;
+use Illuminate\Support\Facades\Auth;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+        
+        // Get available rides
+        $availableRides = VehicleAdvertisement::with(['vehicle', 'owner'])
+            ->where('status', 'approved')
+            ->where('departure_time', '>', now())
+            ->where('available_seats', '>', 0)
+            ->orderBy('departure_time', 'asc')
+            ->limit(6)
+            ->get();
+        
+        // Get available bikes
+        $availableBikes = Bike::where('status', 'available')
+            ->where('is_active', true)
+            ->limit(4)
+            ->get();
+        
+        // Get user statistics
+        $totalTrips = Booking::where('user_id', $user->id)->count();
+        $totalSpent = Booking::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->sum('total_price');
+        $completedTrips = Booking::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->count();
+        $pendingTrips = Booking::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->count();
+        $confirmedTrips = Booking::where('user_id', $user->id)
+            ->where('status', 'confirmed')
+            ->count();
+        
+        // Get recent completed trips for the chart
+        $recentSpending = Booking::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->selectRaw('DATE(created_at) as date, SUM(total_price) as total')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->limit(7)
+            ->get();
+        
+        $stats = [
+            'total_rides' => $totalTrips,
+            'total_spent' => $totalSpent,
+            'completed_trips' => $completedTrips,
+            'pending_trips' => $pendingTrips,
+            'confirmed_trips' => $confirmedTrips,
+            'available_rides' => VehicleAdvertisement::where('status', 'approved')
+                ->where('departure_time', '>', now())
+                ->where('available_seats', '>', 0)
+                ->count(),
+            'available_bikes' => Bike::where('status', 'available')->where('is_active', true)->count(),
+        ];
+        
+        // Get recent bookings
+        $recentBookings = Booking::with(['advertisement', 'vehicle'])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->take(5)
+            ->get();
+        
+        return view('user.dashboard', compact(
+            'availableRides', 'availableBikes', 'stats', 
+            'recentBookings', 'totalSpent', 'completedTrips', 'recentSpending'
+        ));
+    }
+}
