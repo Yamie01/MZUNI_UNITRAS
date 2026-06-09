@@ -254,6 +254,8 @@ Route::prefix('admin')
         Route::get('/active-bike-rentals', [TrackingController::class, 'getActiveBikeRentals'])->name('active-bike-rentals');
     });
 
+    Route::post('/subscription/manual-verify', [SubscriptionController::class, 'manualVerify'])->name('subscription.manual-verify');
+    
 // ================================
 // DEBUG ROUTES (local only)
 // ================================

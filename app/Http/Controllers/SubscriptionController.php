@@ -133,10 +133,13 @@ class SubscriptionController extends Controller
         return back()->with('error', 'Payment service error.');
     }
     }
-    public function callback(Request $request)
-{
+
+ public function callback(Request $request)
+    {
     $tx_ref = $request->query('tx_ref');
     $status = $request->query('status');
+    
+    Log::info('Subscription callback called', ['tx_ref' => $tx_ref, 'status' => $status]);
     
     if (!$tx_ref || $status !== 'success') {
         return redirect()->route('subscription.index')->with('error', 'Payment was not completed.');
@@ -145,30 +148,88 @@ class SubscriptionController extends Controller
     $transaction = Transaction::where('reference', $tx_ref)->first();
     
     if (!$transaction) {
+        Log::error('Transaction not found', ['tx_ref' => $tx_ref]);
         return redirect()->route('subscription.index')->with('error', 'Transaction not found.');
     }
     
-    $verification = Paychangu::verify_checkout($tx_ref);
+    // If already processed
+    if ($transaction->status === 'completed') {
+        return redirect()->route('subscription.index')->with('success', 'Subscription already active!');
+    }
     
-    if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
-        DB::transaction(function () use ($transaction, $verification) {
-            $transaction->update([
-                'status' => 'completed',
-                'paid_at' => now(),
-            ]);
-            
-            // Find subscription by transaction_id
-            $subscription = Subscription::find($transaction->transaction_id);
-            if ($subscription) {
-                $subscription->update(['status' => 'active']);
-            }
-        });
+    // Verify with PayChangu
+    try {
+        $verification = Paychangu::verify_checkout($tx_ref);
+        Log::info('Verification result', $verification);
         
-        return redirect()->route('subscription.index')->with('success', 'Subscription activated!');
+        if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+            DB::transaction(function () use ($transaction, $verification) {
+                $transaction->update([
+                    'status' => 'completed',
+                    'payment_details' => json_encode($verification['data']['authorization'] ?? []),
+                    'paid_at' => now(),
+                ]);
+                
+                $subscription = Subscription::find($transaction->transaction_id);
+                if ($subscription && $subscription->status !== 'active') {
+                    $subscription->update(['status' => 'active']);
+                }
+            });
+            
+            return redirect()->route('subscription.index')->with('success', 'Subscription activated successfully!');
+        } else {
+            return redirect()->route('subscription.index')->with('error', 'Payment verification failed.');
+        }
+    } catch (\Exception $e) {
+        Log::error('Callback error: ' . $e->getMessage());
+        return redirect()->route('subscription.index')->with('error', 'Verification error.');
+    }
+    }
+
+    public function manualVerify(Request $request)
+    {
+    $subscriptionId = $request->input('subscription_id');
+    $subscription = Subscription::find($subscriptionId);
+    
+    if (!$subscription) {
+        return back()->with('error', 'Subscription not found.');
     }
     
-    return redirect()->route('subscription.index')->with('error', 'Payment verification failed.');
+    if ($subscription->status === 'active') {
+        return back()->with('info', 'Subscription is already active.');
     }
+    
+    // Find the transaction
+    $transaction = Transaction::where('transaction_id', $subscription->id)
+        ->where('transaction_type', 'subscription')
+        ->first();
+    
+    if (!$transaction) {
+        return back()->with('error', 'No payment transaction found.');
+    }
+    
+    try {
+        $verification = Paychangu::verify_checkout($transaction->reference);
+        
+        if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+            DB::transaction(function () use ($subscription, $transaction, $verification) {
+                $transaction->update([
+                    'status' => 'completed',
+                    'paid_at' => now(),
+                ]);
+                $subscription->update(['status' => 'active']);
+            });
+            
+            return redirect()->route('subscription.index')->with('success', 'Subscription activated successfully!');
+        } else {
+            return back()->with('error', 'Payment not confirmed.');
+        }
+    } catch (\Exception $e) {
+        Log::error('Manual verification error: ' . $e->getMessage());
+        return back()->with('error', 'Verification failed.');
+    }
+    }
+    
     public function cancel(Subscription $subscription)
     {
         if ($subscription->user_id !== auth()->id()) {

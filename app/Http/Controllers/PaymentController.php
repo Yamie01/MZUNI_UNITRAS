@@ -297,7 +297,47 @@ class PaymentController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        // Webhook handling (optional, keep for future)
-        return response()->json(['status' => 'ok'], 200);
+    $payload = $request->getContent();
+    $signature = $request->header('X-Signature');
+    $webhookSecret = config('paychangu.webhook_secret');
+    $computedSignature = hash_hmac('sha256', $payload, $webhookSecret);
+
+    if ($computedSignature !== $signature) {
+        Log::warning('Invalid webhook signature');
+        return response()->json(['error' => 'Invalid signature'], 401);
+    }
+
+    $data = $request->all();
+    
+    if (($data['event_type'] ?? '') === 'api.charge.payment' && ($data['status'] ?? '') === 'success') {
+        $transaction = Transaction::where('reference', $data['reference'])->first();
+        
+        if ($transaction && $transaction->status !== 'completed') {
+            DB::transaction(function () use ($transaction, $data) {
+                $transaction->update([
+                    'status' => 'completed',
+                    'payment_details' => json_encode($data['authorization'] ?? []),
+                    'paid_at' => now(),
+                ]);
+                
+                // ✅ Handle subscription payments
+                if ($transaction->transaction_type === 'subscription') {
+                    $subscription = Subscription::find($transaction->transaction_id);
+                    if ($subscription && $subscription->status !== 'active') {
+                        $subscription->update(['status' => 'active']);
+                        Log::info('Subscription activated via webhook', [
+                            'subscription_id' => $subscription->id,
+                            'user_id' => $subscription->user_id
+                        ]);
+                    }
+                } else {
+                    // Handle booking or bike rental
+                    $this->updateRelatedModel($transaction);
+                }
+            });
+        }
+    }
+
+    return response()->json(['status' => 'ok'], 200);
     }
 }
