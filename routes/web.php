@@ -117,13 +117,15 @@ Route::middleware('auth')->group(function () {
     // ------------------------------
     // BIKE RENTAL ROUTES
     // ------------------------------
+    // Bike rental routes
     Route::prefix('bikes')->name('user.bikes.')->group(function () {
         Route::get('/', [BikeController::class, 'index'])->name('index');
         Route::get('/{bike}', [BikeController::class, 'show'])->name('show');
         Route::get('/{bike}/rent', [BikeRentalController::class, 'rent'])->name('rent');
-        Route::post('/{bike}/rent', [BikeRentalController::class, 'processRent'])->name('process-rent');
+        Route::post('/{bike}/rent', [BikeRentalController::class, 'processRent'])->name('rent.process');
+        Route::post('/bikes/{bike}/rent', [BikeRentalController::class, 'processRent'])->name('user.bikes.rent.process');
     });
-    
+
     Route::prefix('bike-rentals')->name('user.bike-rentals.')->group(function () {
         Route::get('/', [BikeRentalController::class, 'index'])->name('index');
         Route::get('/{rental}', [BikeRentalController::class, 'show'])->name('show');

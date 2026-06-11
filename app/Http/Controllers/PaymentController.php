@@ -82,68 +82,59 @@ class PaymentController extends Controller
      * Initiate payment for a bike rental
      */
     public function initiateRental(BikeRental $rental)
-    {
-        if ($rental->user_id !== auth()->id()) abort(403);
-        if ($rental->is_paid) {
-            return redirect()->route('user.rentals.show', $rental)->with('error', 'Already paid.');
-        }
-
-        $totalAmount = $rental->total_amount;
-        $platformFee = $totalAmount;
-        $ownerEarnings = 0;
-        $txRef = 'TXN-RENT-' . $rental->id . '-' . time();
-
-        $transaction = Transaction::create([
-            'reference'        => $txRef,
-            'transaction_type' => 'bike_rental',
-            'transaction_id'   => $rental->id,
-            'amount'           => $totalAmount,
-            'platform_fee'     => $platformFee,
-            'owner_earnings'   => $ownerEarnings,
-            'status'           => 'pending',
-        ]);
-
-        $rental->update([
-            'platform_fee'   => $platformFee,
-            'owner_earnings' => $ownerEarnings,
-        ]);
-
-        try {
-            $response = Paychangu::create_checkout_link([
-                'amount'       => $totalAmount,
-                'email'        => auth()->user()->email,
-                'first_name'   => auth()->user()->name,
-                'last_name'    => '',
-                'currency'     => 'MWK',
-                'return_url'   => url('/payment/return'),
-                'callback_url' => url('/payment/webhook'),
-                'meta' => [
-                    'transaction_id' => $transaction->id,
-                    'rental_id'      => $rental->id,
-                    'user_id'        => auth()->id(),
-                    'tx_ref'         => $txRef,
-                    'payment_type'   => 'bike_rental',
-                ],
-            ]);
-
-            if ($response['success']) {
-                // ✅ CRITICAL: Update with the actual reference from PayChangu
-                $actualTxRef = $response['tx_ref'];
-                $transaction->update(['reference' => $actualTxRef]);
-                
-                session([
-                    'pending_transaction_id' => $transaction->id,
-                    'pending_rental_id'      => $rental->id,
-                ]);
-                return redirect($response['checkout_url']);
-            }
-            return back()->with('error', 'Unable to initiate payment.');
-        } catch (\Exception $e) {
-            Log::error('Rental payment error: ' . $e->getMessage());
-            return back()->with('error', 'Payment service error.');
-        }
+{
+    if ($rental->user_id !== auth()->id()) {
+        abort(403);
+    }
+    
+    if ($rental->is_paid) {
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('error', 'Already paid.');
     }
 
+    $totalAmount = $rental->total_amount;
+    $txRef = 'RENT-' . $rental->id . '-' . time();
+
+    // Update or create transaction
+    $transaction = Transaction::updateOrCreate(
+        ['transaction_id' => $rental->id, 'transaction_type' => 'bike_rental'],
+        [
+            'reference' => $txRef,
+            'amount' => $totalAmount,
+            'platform_fee' => $totalAmount,
+            'owner_earnings' => 0,
+            'status' => 'pending',
+        ]
+    );
+
+    try {
+        $response = Paychangu::create_checkout_link([
+            'amount' => $totalAmount,
+            'email' => auth()->user()->email,
+            'first_name' => auth()->user()->name,
+            'last_name' => '',
+            'currency' => 'MWK',
+            'return_url' => url('/payment/return'),
+            'callback_url' => url('/payment/webhook'),
+            'meta' => [
+                'transaction_id' => $transaction->id,
+                'rental_id' => $rental->id,
+                'user_id' => auth()->id(),
+                'tx_ref' => $txRef,
+                'payment_type' => 'bike_rental',
+            ],
+        ]);
+
+        if ($response['success']) {
+            return redirect($response['checkout_url']);
+        }
+
+        return back()->with('error', 'Unable to initiate payment: ' . ($response['message'] ?? 'Unknown error'));
+    } catch (\Exception $e) {
+        Log::error('Rental payment error: ' . $e->getMessage());
+        return back()->with('error', 'Payment service error: ' . $e->getMessage());
+    }
+}
     /**
      * Return URL – user comes back after payment
      */
