@@ -189,65 +189,57 @@ class PaymentController extends Controller
      * Manual verification fallback
      */
     public function manualVerify(Request $request)
-    {
-        $rentalId = $request->input('rental_id');
-        
-        if (!$rentalId) {
-            return back()->with('error', 'Invalid request.');
-        }
-
-        // Find the rental and its transaction directly
-        $rental = BikeRental::find($rentalId);
-        if (!$rental) {
-            return back()->with('error', 'Rental not found.');
-        }
-
-        // ✅ Get the latest transaction for this rental
-        $transaction = Transaction::where('transaction_id', $rental->id)
-            ->where('transaction_type', 'bike_rental')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        if (!$transaction) {
-            return back()->with('error', 'No payment transaction found.');
-        }
-
-        if ($rental->is_paid) {
-            return back()->with('info', 'Rental is already active.');
-        }
-
-        try {
-            $verification = Paychangu::verify_checkout($transaction->reference);
-            
-            if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
-                DB::transaction(function () use ($rental, $transaction, $verification) {
-                    $transaction->update([
-                        'status' => 'completed',
-                        'payment_details' => json_encode($verification['data']['authorization'] ?? []),
-                        'paid_at' => now(),
-                    ]);
-                    
-                    $rental->update([
-                        'is_paid' => true,
-                        'status' => 'active',
-                        'payment_date' => now(),
-                    ]);
-                    
-                    if ($rental->bike) {
-                        $rental->bike->update(['status' => 'rented']);
-                    }
-                });
-                
-                return back()->with('success', '✅ Payment confirmed! Rental is now active.');
-            }
-            
-            return back()->with('error', 'Payment not confirmed. Status: ' . ($verification['data']['status'] ?? 'unknown'));
-        } catch (\Exception $e) {
-            Log::error('Manual verification error: ' . $e->getMessage());
-            return back()->with('error', 'Verification failed: ' . $e->getMessage());
-        }
+{
+    $rentalId = $request->input('rental_id');
+    $rental = BikeRental::find($rentalId);
+    
+    if (!$rental) {
+        return back()->with('error', 'Rental not found.');
     }
-
+    
+    // Find the transaction
+    $transaction = Transaction::where('transaction_id', $rental->id)
+        ->where('transaction_type', 'bike_rental')
+        ->first();
+    
+    if (!$transaction) {
+        return back()->with('error', 'No payment transaction found.');
+    }
+    
+    if ($rental->is_paid) {
+        return back()->with('info', 'Rental is already active.');
+    }
+    
+    try {
+        $verification = Paychangu::verify_checkout($transaction->reference);
+        
+        if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+            DB::transaction(function () use ($rental, $transaction, $verification) {
+                $transaction->update([
+                    'status' => 'completed',
+                    'paid_at' => now(),
+                ]);
+                
+                $rental->update([
+                    'is_paid' => true,
+                    'status' => 'active',
+                    'payment_date' => now(),
+                ]);
+                
+                if ($rental->bike) {
+                    $rental->bike->update(['status' => 'rented']);
+                }
+            });
+            
+            return back()->with('success', 'Payment confirmed! Rental is now active.');
+        } else {
+            return back()->with('error', 'Payment not confirmed. Status: ' . ($verification['data']['status'] ?? 'unknown'));
+        }
+    } catch (\Exception $e) {
+        Log::error('Manual verification error: ' . $e->getMessage());
+        return back()->with('error', 'Verification failed: ' . $e->getMessage());
+    }
+}
     /**
      * Redirect to the appropriate success page
      */

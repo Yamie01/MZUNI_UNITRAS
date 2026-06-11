@@ -105,21 +105,18 @@ class BikeRentalController extends Controller
 
     public function cancel(BikeRental $rental)
     {
-        if ($rental->user_id !== Auth::id()) abort(403);
-        if ($rental->status !== 'pending') {
-            return back()->with('error', 'Cannot cancel active rental.');
-        }
-        
-        DB::transaction(function () use ($rental) {
-            $rental->update(['status' => 'cancelled']);
-            if ($rental->bike) {
-                $rental->bike->update(['status' => 'available']);
-            }
-        });
-        
-        return back()->with('success', 'Rental cancelled.');
+    if ($rental->user_id !== Auth::id()) {
+        abort(403);
     }
-
+    
+    if ($rental->status !== 'pending') {
+        return back()->with('error', 'Cannot cancel this rental.');
+    }
+    
+    $rental->update(['status' => 'cancelled']);
+    
+    return back()->with('success', 'Rental cancelled successfully.');
+    }
     public function returnBike(BikeRental $rental)
     {
         if ($rental->user_id !== Auth::id() && Auth::user()->user_type !== 'admin') {

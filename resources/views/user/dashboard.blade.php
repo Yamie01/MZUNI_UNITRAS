@@ -124,17 +124,43 @@
 
                     <!-- Quick Actions -->
                     <div class="d-flex flex-wrap gap-2 mb-4">
-                        <a href="{{ route('search') }}" class="btn action-btn btn-primary"><i class="fas fa-car me-2"></i>Book a ride</a>
-                        <a href="{{ route('user.bikes.index') }}" class="btn action-btn btn-outline-primary"><i class="fas fa-bicycle me-2"></i>Rent a bike</a>
-                        <a href="{{ route('subscription.index') }}" class="btn action-btn btn-outline-primary"><i class="fas fa-ticket-alt me-2"></i>Subscription</a>
-                        <a href="{{ route('profile.edit') }}" class="btn action-btn btn-outline-secondary"><i class="fas fa-user-edit me-2"></i>Edit profile</a>
+                        <a href="{{ route('search') }}" class="btn btn-outline-primary"><i class="fas fa-car me-2"></i>Book a ride</a>
+                        <a href="{{ route('user.bikes.index') }}" class="btn btn-outline-primary"><i class="fas fa-bicycle me-2"></i>Rent a bike</a>
+                        <a href="{{ route('subscription.index') }}" class="btn btn-outline-primary"><i class="fas fa-ticket-alt me-2"></i>Subscription</a>
+                        <a href="{{ route('profile.edit') }}" class="btn btn-outline-secondary"><i class="fas fa-user-edit me-2"></i>Edit profile</a>
                     </div>
 
-                    <!-- Available Rides Preview -->
+                    <!-- Subscription Status Alert -->
+                    @php
+                        $subscription = App\Models\Subscription::where('user_id', Auth::id())
+                            ->where('status', 'active')
+                            ->where('end_date', '>', now())
+                            ->first();
+                    @endphp
+
+                    @if($subscription)
+                        <div class="alert alert-success mb-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <div>
+                                    <i class="fas fa-ticket-alt fa-2x me-3 float-start"></i>
+                                    <div>
+                                        <strong>{{ ucfirst($subscription->type) }} Pass Active!</strong><br>
+                                        <small>Expires: {{ $subscription->end_date->format('d M Y, H:i') }}</small><br>
+                                        <small>Free rides left today: {{ $subscription->getRemainingTodaysRides() }} / {{ $subscription->getDailyLimit() }}</small>
+                                    </div>
+                                </div>
+                                <a href="{{ route('subscription.index') }}" class="btn btn-sm btn-light mt-2 mt-sm-0">Manage</a>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Available Rides Preview (Only SHOW AVAILABLE rides, not pending ones) -->
                     <div class="mb-4">
                         <h5 class="fw-bold mb-3"><i class="fas fa-car text-primary me-2"></i>Available Rides – One Click to Book</h5>
                         <div class="row g-3">
-                            @forelse(($availableRides ?? [])->take(3) as $ride)
+                            @forelse(($availableRides ?? [])->filter(function($ride) { 
+                                return $ride->status === 'approved' && $ride->available_seats > 0; 
+                            })->take(3) as $ride)
                             <div class="col-md-4 col-sm-6">
                                 <div class="ride-card" onclick="window.location.href='{{ route('user.bookings.create', $ride) }}'">
                                     <div class="card-img-icon">
@@ -157,21 +183,18 @@
                                 </div>
                             </div>
                             @empty
-                            <div class="col-12"><div class="alert alert-info">No rides available at the moment. <a href="{{ route('search') }}">Browse rides →</a></div></div>
+                            <div class="col-12"><div class="alert alert-info">No rides available at the moment.</div></div>
                             @endforelse
                         </div>
-                        @if(($availableRides ?? [])->count() > 3)
-                        <div class="text-center mt-2">
-                            <a href="#" onclick="document.querySelector('[data-section=\'available-rides\']').click(); return false;" class="text-primary small">View all {{ $availableRides->count() }} rides →</a>
-                        </div>
-                        @endif
                     </div>
 
-                    <!-- Available Bikes Preview -->
+                    <!-- Available Bikes Preview (Only SHOW AVAILABLE bikes) -->
                     <div class="mb-4">
                         <h5 class="fw-bold mb-3"><i class="fas fa-bicycle text-primary me-2"></i>Available Bikes – One Click to Rent</h5>
                         <div class="row g-3">
-                            @forelse(($availableBikes ?? [])->take(4) as $bike)
+                            @forelse(($availableBikes ?? [])->filter(function($bike) { 
+                                return $bike->status === 'available'; 
+                            })->take(4) as $bike)
                             <div class="col-md-3 col-sm-6">
                                 <div class="bike-card" onclick="window.location.href='{{ route('user.bikes.rent', $bike) }}'">
                                     <div class="card-img-icon">
@@ -187,17 +210,12 @@
                                 </div>
                             </div>
                             @empty
-                            <div class="col-12"><div class="alert alert-info">No bikes available at the moment. <a href="{{ route('user.bikes.index') }}">Browse bikes →</a></div></div>
+                            <div class="col-12"><div class="alert alert-info">No bikes available at the moment.</div></div>
                             @endforelse
                         </div>
-                        @if(($availableBikes ?? [])->count() > 4)
-                        <div class="text-center mt-2">
-                            <a href="#" onclick="document.querySelector('[data-section=\'available-bikes\']').click(); return false;" class="text-primary small">View all {{ $availableBikes->count() }} bikes →</a>
-                        </div>
-                        @endif
                     </div>
 
-                    <!-- Recent Bike Rentals (with Track & Return buttons) -->
+                    <!-- Recent Bike Rentals with Full Actions -->
                     <div class="mt-4">
                         <h5 class="fw-bold mb-3"><i class="fas fa-history text-primary me-2"></i>Recent Bike Rentals</h5>
                         <div class="table-responsive">
@@ -208,8 +226,14 @@
                                 <tbody>
                                     @forelse($recentRentals ?? [] as $rental)
                                     <tr>
-                                        <td><strong>{{ $rental->bike->brand ?? 'Bike' }} {{ $rental->bike->model ?? '' }}</strong> <br><small class="text-muted">Duration: {{ $rental->duration }} {{ ucfirst($rental->duration_type) }}(s)</small></td>
-                                        <td>{{ $rental->created_at->format('d M Y') }}<br><small class="text-muted">{{ $rental->created_at->format('H:i') }}</small></td>
+                                        <td>
+                                            <strong>{{ $rental->bike->brand ?? 'Bike' }} {{ $rental->bike->model ?? '' }}</strong>
+                                            <br><small class="text-muted">Duration: {{ $rental->duration }} {{ ucfirst($rental->duration_type) }}(s)</small>
+                                        </td>
+                                        <td>
+                                            {{ $rental->created_at->format('d M Y') }}<br>
+                                            <small class="text-muted">{{ $rental->created_at->format('H:i') }}</small>
+                                        </td>
                                         <td><strong>MWK {{ number_format($rental->total_amount ?? $rental->total_price, 0) }}</strong></td>
                                         <td>
                                             @if($rental->status === 'active')
@@ -217,12 +241,15 @@
                                             @elseif($rental->status === 'completed')
                                                 <span class="badge bg-info">Completed</span>
                                             @elseif($rental->status === 'pending')
-                                                <span class="badge bg-warning">Pending</span>
+                                                <span class="badge bg-warning">Pending Payment</span>
+                                            @elseif($rental->status === 'cancelled')
+                                                <span class="badge bg-danger">Cancelled</span>
                                             @else
                                                 <span class="badge bg-secondary">{{ ucfirst($rental->status) }}</span>
                                             @endif
                                         </td>
                                         <td>
+                                            <!-- Track Button (Active only) -->
                                             @if($rental->status === 'active')
                                                 <a href="{{ route('tracking.bike', $rental) }}" class="btn btn-sm btn-info mb-1">
                                                     <i class="fas fa-map-marked-alt"></i> Track
@@ -234,17 +261,33 @@
                                                     </button>
                                                 </form>
                                             @endif
+                                            
+                                            <!-- Verify Payment Button (Pending only) -->
                                             @if($rental->status === 'pending' && !$rental->is_paid)
                                                 <form action="{{ route('payment.manual-verify') }}" method="POST" class="d-inline">
                                                     @csrf
                                                     <input type="hidden" name="rental_id" value="{{ $rental->id }}">
-                                                    <button type="submit" class="btn btn-sm btn-warning">Verify Payment</button>
+                                                    <button type="submit" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-check-circle me-1"></i> Verify Payment
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            
+                                            <!-- Cancel Button (Pending only) -->
+                                            @if($rental->status === 'pending')
+                                                <form action="{{ route('user.bike-rentals.cancel', $rental) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Cancel this rental?')">
+                                                        <i class="fas fa-times-circle me-1"></i> Cancel
+                                                    </button>
                                                 </form>
                                             @endif
                                         </td>
                                     </tr>
                                     @empty
-                                    <tr><td colspan="5" class="text-center">No bike rentals yet. <a href="{{ route('user.bikes.index') }}">Rent a bike now</a></td></tr>
+                                    <tr>
+                                        <td colspan="5" class="text-center">No bike rentals yet. <a href="{{ route('user.bikes.index') }}">Rent a bike now</a></td>
+                                    </tr>
                                     @endforelse
                                 </tbody>
                             </table>
@@ -257,27 +300,29 @@
                     <h5 class="fw-bold mb-3"><i class="fas fa-car text-primary me-2"></i>All Available Rides</h5>
                     <div class="row g-4">
                         @forelse($availableRides ?? [] as $ride)
-                        <div class="col-lg-4 col-md-6">
-                            <div class="ride-card" onclick="window.location.href='{{ route('user.bookings.create', $ride) }}'">
-                                <div class="card-img-icon">
-                                    <i class="fas fa-car-side fa-3x text-primary"></i>
-                                </div>
-                                <div class="p-3">
-                                    <div class="d-flex justify-content-between">
-                                        <strong>{{ $ride->from_location }}</strong>
-                                        <i class="fas fa-arrow-right text-muted"></i>
-                                        <strong>{{ $ride->to_location }}</strong>
+                            @if($ride->status === 'approved' && $ride->available_seats > 0)
+                            <div class="col-lg-4 col-md-6">
+                                <div class="ride-card" onclick="window.location.href='{{ route('user.bookings.create', $ride) }}'">
+                                    <div class="card-img-icon">
+                                        <i class="fas fa-car-side fa-3x text-primary"></i>
                                     </div>
-                                    <div class="small text-muted mt-1">
-                                        <i class="far fa-calendar-alt me-1"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <span class="price-tag">MWK {{ number_format($ride->price, 0) }}</span>
-                                        <span class="badge-available">{{ $ride->available_seats }} seats left</span>
+                                    <div class="p-3">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>{{ $ride->from_location }}</strong>
+                                            <i class="fas fa-arrow-right text-muted"></i>
+                                            <strong>{{ $ride->to_location }}</strong>
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            <i class="far fa-calendar-alt me-1"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <span class="price-tag">MWK {{ number_format($ride->price, 0) }}</span>
+                                            <span class="badge-available">{{ $ride->available_seats }} seats left</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            @endif
                         @empty
                         <div class="col-12"><div class="alert alert-info">No rides available at the moment.</div></div>
                         @endforelse
@@ -289,21 +334,23 @@
                     <h5 class="fw-bold mb-3"><i class="fas fa-bicycle text-primary me-2"></i>All Available Bikes</h5>
                     <div class="row g-4">
                         @forelse($availableBikes ?? [] as $bike)
-                        <div class="col-lg-3 col-md-4 col-sm-6">
-                            <div class="bike-card" onclick="window.location.href='{{ route('user.bikes.rent', $bike) }}'">
-                                <div class="card-img-icon">
-                                    <i class="fas fa-bicycle fa-3x text-success"></i>
-                                </div>
-                                <div class="p-3 text-center">
-                                    <h6 class="fw-bold mb-0">{{ $bike->brand }} {{ $bike->model }}</h6>
-                                    <small class="text-muted">{{ ucfirst($bike->type) }}</small>
-                                    <div class="mt-2">
-                                        <span class="price-tag">MWK {{ number_format($bike->price_per_hour, 0) }}/hr</span>
+                            @if($bike->status === 'available')
+                            <div class="col-lg-3 col-md-4 col-sm-6">
+                                <div class="bike-card" onclick="window.location.href='{{ route('user.bikes.rent', $bike) }}'">
+                                    <div class="card-img-icon">
+                                        <i class="fas fa-bicycle fa-3x text-success"></i>
                                     </div>
-                                    <div class="small text-muted">Daily: MWK {{ number_format($bike->price_per_day, 0) }}</div>
+                                    <div class="p-3 text-center">
+                                        <h6 class="fw-bold mb-0">{{ $bike->brand }} {{ $bike->model }}</h6>
+                                        <small class="text-muted">{{ ucfirst($bike->type) }}</small>
+                                        <div class="mt-2">
+                                            <span class="price-tag">MWK {{ number_format($bike->price_per_hour, 0) }}/hr</span>
+                                        </div>
+                                        <div class="small text-muted">Daily: MWK {{ number_format($bike->price_per_day, 0) }}</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            @endif
                         @empty
                         <div class="col-12"><div class="alert alert-info">No bikes available at the moment.</div></div>
                         @endforelse
@@ -316,19 +363,37 @@
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
-                                <tr><th>Route</th><th>Date</th><th>Seats</th><th>Amount</th><th>Status</th></tr>
+                                <tr><th>Route</th><th>Date</th><th>Seats</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 @forelse($allBookings ?? [] as $booking)
-                                <td>
-                                    <td>{{ $booking->advertisement->from_location ?? 'N/A' }} → {{ $booking->advertisement->to_location ?? 'N/A' }}</small></td>
+                                <tr>
+                                    <td>{{ $booking->advertisement->from_location ?? 'N/A' }} → {{ $booking->advertisement->to_location ?? 'N/A' }}</td>
                                     <td>{{ \Carbon\Carbon::parse($booking->trip_date)->format('d M Y') }}</td>
                                     <td>{{ $booking->number_of_seats }}</td>
                                     <td>MWK {{ number_format($booking->total_price, 0) }}</td>
-                                    <td><span class="badge bg-{{ $booking->status === 'confirmed' ? 'success' : ($booking->status === 'pending' ? 'warning' : 'secondary') }}">{{ ucfirst($booking->status) }}</span></td>
+                                    <td>
+                                        @if($booking->status === 'confirmed')
+                                            <span class="badge bg-success">Confirmed</span>
+                                        @elseif($booking->status === 'pending')
+                                            <span class="badge bg-warning">Pending Payment</span>
+                                        @elseif($booking->status === 'cancelled')
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ ucfirst($booking->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($booking->status === 'pending')
+                                            <form action="{{ route('user.bookings.cancel', $booking) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Cancel this booking?')">Cancel</button>
+                                            </form>
+                                        @endif
+                                    </td>
                                 </tr>
                                 @empty
-                                <td><td colspan="5" class="text-center">No ride bookings. <a href="#" onclick="document.querySelector('[data-section=\'available-rides\']').click(); return false;">Book a ride now</a></td></td>
+                                <tr><td colspan="6" class="text-center">No ride bookings yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -341,12 +406,12 @@
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
-                                <td><th>Bike</th><th>Rental Date</th><th>Duration</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
+                                <tr><th>Bike</th><th>Rental Date</th><th>Duration</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
                             </thead>
                             <tbody>
                                 @forelse($allBikeRentals ?? [] as $rental)
                                 <tr>
-                                    <td>{{ $rental->bike->brand ?? 'Bike' }} {{ $rental->bike->model ?? '' }}</small></td>
+                                    <td>{{ $rental->bike->brand ?? 'Bike' }} {{ $rental->bike->model ?? '' }}</td>
                                     <td>{{ $rental->created_at->format('d M Y') }}</td>
                                     <td>{{ $rental->duration }} {{ ucfirst($rental->duration_type) }}(s)</td>
                                     <td>MWK {{ number_format($rental->total_amount ?? $rental->total_price, 0) }}</td>
@@ -357,8 +422,8 @@
                                             <span class="badge bg-info">Completed</span>
                                         @elseif($rental->status === 'pending')
                                             <span class="badge bg-warning">Pending</span>
-                                        @else
-                                            <span class="badge bg-secondary">{{ ucfirst($rental->status) }}</span>
+                                        @elseif($rental->status === 'cancelled')
+                                            <span class="badge bg-danger">Cancelled</span>
                                         @endif
                                     </td>
                                     <td>
@@ -366,13 +431,19 @@
                                             <a href="{{ route('tracking.bike', $rental) }}" class="btn btn-sm btn-info">Track</a>
                                             <form action="{{ route('user.bike-rentals.return', $rental) }}" method="POST" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Return this bike?')">Return</button>
+                                                <button type="submit" class="btn btn-sm btn-success">Return</button>
+                                            </form>
+                                        @endif
+                                        @if($rental->status === 'pending')
+                                            <form action="{{ route('user.bike-rentals.cancel', $rental) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Cancel this rental?')">Cancel</button>
                                             </form>
                                         @endif
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="6" class="text-center">No bike rentals. <a href="#" onclick="document.querySelector('[data-section=\'available-bikes\']').click(); return false;">Rent a bike now</a></td></tr>
+                                <tr><td colspan="6" class="text-center">No bike rentals yet.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

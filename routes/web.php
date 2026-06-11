@@ -56,6 +56,7 @@ Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/cancel', [PaymentController::class, 'handleCancel'])->name('cancel');
     Route::post('/webhook', [PaymentController::class, 'handleWebhook'])->name('webhook');
     Route::post('/manual-verify', [PaymentController::class, 'manualVerify'])->name('manual-verify')->middleware('auth');
+    Route::post('/payment/manual-verify', [PaymentController::class, 'manualVerify'])->name('payment.manual-verify')->middleware('auth');
 });
 
 // Bike rental webhook (public)
