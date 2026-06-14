@@ -21,7 +21,7 @@ class BookingController extends Controller
     public function __construct(PayChanguService $paychangu)
     {
         $this->paychangu = $paychangu;
-        $this->middleware('auth');
+        // No middleware call here – routes handle authentication
     }
 
     /**
@@ -50,7 +50,13 @@ class BookingController extends Controller
                 ->with('error', 'This ride is no longer available.');
         }
 
-        return view('user.bookings.create', compact('advertisement'));
+        // Check for active subscription (for free booking)
+        $subscription = Subscription::where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->where('end_date', '>', now())
+            ->first();
+
+        return view('user.bookings.create', compact('advertisement', 'subscription'));
     }
 
     /**
@@ -76,12 +82,12 @@ class BookingController extends Controller
         $bookingType = 'paid';
 
         if ($subscription && $subscription->canBookRide()) {
-            // ✅ Use subscription (FREE booking)
+            // Use subscription (FREE booking)
             $isSubscriptionBooking = true;
             $totalPrice = 0;
             $bookingType = 'subscription';
         } else {
-            // ❌ No active subscription or limit exceeded → paid booking
+            // No active subscription or limit exceeded → paid booking
             $totalPrice = $advertisement->price * $request->seats;
             $bookingType = 'paid';
         }

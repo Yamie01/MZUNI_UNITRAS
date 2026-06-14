@@ -37,7 +37,7 @@
                     
                     <!-- Pay Button -->
                     <div class="d-grid gap-2">
-                        <a href="{{ route('user.bookings.payment.initiate', $booking) }}" class="btn btn-success btn-lg">
+                       <a href="{{ route('payment.initiate', $booking) }}" class="btn btn-primary btn-lg">
                             <i class="fas fa-credit-card me-2"></i> Pay MWK {{ number_format($booking->total_price, 2) }}
                         </a>
                         <a href="{{ route('user.bookings.show', $booking) }}" class="btn btn-secondary">

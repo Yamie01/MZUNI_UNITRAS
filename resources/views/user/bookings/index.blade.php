@@ -1,96 +1,93 @@
 @extends('layouts.app')
 
-@section('title', 'My Bookings - Mzuni UNITRAS')
+@section('title', 'My Ride Bookings')
 
 @section('content')
 <div class="container py-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="fw-bold">My Bookings</h2>
-            <p class="text-muted">View and manage your ride bookings</p>
-        </div>
-    </div>
-    
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    
     <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">My Ride Bookings</h5>
+        </div>
         <div class="card-body">
+            @if(session('success'))
+                <div class="alert alert-success">{{ session('success') }}</div>
+            @endif
+            @if(session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
+            @endif
+
             @if($bookings->count() > 0)
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead class="table-light">
                             <tr>
-                                <th>Booking ID</th>
                                 <th>Route</th>
+                                <th>Date</th>
                                 <th>Seats</th>
-                                <th>Total Price</th>
+                                <th>Amount</th>
                                 <th>Status</th>
-                                <th>Booking Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($bookings as $booking)
                             <tr>
-                                <td>#{{ $booking->id }}<br><small class="text-muted">{{ $booking->booking_reference }}</small></td>
                                 <td>
-                                    {{ $booking->advertisement->from_location ?? 'N/A' }} → 
+                                    {{ $booking->advertisement->from_location ?? 'N/A' }} →
                                     {{ $booking->advertisement->to_location ?? 'N/A' }}
-                                    <br><small class="text-muted">{{ \Carbon\Carbon::parse($booking->advertisement->departure_time)->format('d M Y H:i') }}</small>
+                                    <br><small class="text-muted">
+                                        {{ \Carbon\Carbon::parse($booking->advertisement->departure_time)->format('d M Y H:i') }}
+                                    </small>
                                 </td>
+                                <td>{{ \Carbon\Carbon::parse($booking->trip_date)->format('d M Y') }}</td>
                                 <td>{{ $booking->number_of_seats }}</td>
-                                <td>MWK {{ number_format($booking->total_price, 2) }}</td>
+                                <td>MWK {{ number_format($booking->total_price, 0) }}</td>
                                 <td>
-                                    @if($booking->status == 'confirmed')
-                                        <span class="badge bg-success">Confirmed</span>
-                                    @elseif($booking->status == 'pending')
+                                    @if($booking->status === 'pending')
                                         <span class="badge bg-warning">Pending Payment</span>
-                                    @elseif($booking->status == 'completed')
-                                        <span class="badge bg-info">Completed</span>
-                                    @elseif($booking->status == 'cancelled')
+                                    @elseif($booking->status === 'confirmed')
+                                        <span class="badge bg-success">Confirmed</span>
+                                    @elseif($booking->status === 'cancelled')
                                         <span class="badge bg-danger">Cancelled</span>
+                                    @else
+                                        <span class="badge bg-secondary">{{ ucfirst($booking->status) }}</span>
                                     @endif
                                 </td>
-                                <td>{{ $booking->created_at->format('d M Y') }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('user.bookings.show', $booking) }}" class="btn btn-info">
-                                            <i class="fas fa-eye"></i>
+                                    <!-- View button always -->
+                                    <a href="{{ route('user.bookings.show', $booking) }}" class="btn btn-sm btn-info mb-1">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+
+                                    @if($booking->status === 'pending')
+                                        <!-- Pay Now button -->
+                                        <a href="{{ route('payment.initiate', $booking) }}" class="btn btn-sm btn-success mb-1">
+                                            <i class="fas fa-credit-card"></i> Pay Now
                                         </a>
-                                        
-                                        @if($booking->status == 'pending')
-                                            <a href="{{ route('user.bookings.payment', $booking) }}" class="btn btn-success">
-                                                <i class="fas fa-credit-card"></i> Pay
-                                            </a>
-                                            <form action="{{ route('user.bookings.cancel', $booking) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="btn btn-danger" onclick="return confirm('Cancel this booking?')">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </form>
-                                        @endif
-                                        <td>
-                                            @if($booking->booking_type === 'subscription')
-                                                <span class="badge bg-success">Free (Subscription)</span>
-                                            @else
-                                                <span class="badge bg-primary">Paid</span>
-                                            @endif
-                                        </td>
-                                    </div>
+
+                                        <!-- Cancel button -->
+                                        <form action="{{ route('user.bookings.cancel', $booking) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Cancel this booking?')">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </form>
+
+                                        <!-- Verify Payment button (manual fallback) -->
+                                        <form action="{{ route('payment.manual-verify-booking') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="booking_id" value="{{ $booking->id }}">
+                                            <button type="submit" class="btn btn-sm btn-warning mb-1">
+                                                <i class="fas fa-check-circle"></i> Verify
+                                            </button>
+                                        </form>
+                                    @endif
+
+                                    @if($booking->booking_type === 'subscription')
+                                        <span class="badge bg-success">Free (Subscription)</span>
+                                    @endif
                                 </td>
-                            </tr>
+                             </tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -98,12 +95,9 @@
                 {{ $bookings->links() }}
             @else
                 <div class="text-center py-5">
-                    <i class="fas fa-calendar-alt fa-4x text-muted mb-3"></i>
-                    <h5>No bookings yet</h5>
-                    <p class="text-muted">You haven't made any ride bookings.</p>
-                    <a href="{{ route('search') }}" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Find Rides
-                    </a>
+                    <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                    <p>No ride bookings yet.</p>
+                    <a href="{{ route('search') }}" class="btn btn-primary">Find a Ride</a>
                 </div>
             @endif
         </div>

@@ -76,6 +76,7 @@ class PaymentController extends Controller
             Log::error('Payment initiation error: ' . $e->getMessage());
             return back()->with('error', 'Payment service error.');
         }
+         dd('Initiate method reached', $booking->id);
     }
 
     /**
@@ -176,6 +177,50 @@ class PaymentController extends Controller
         return $this->redirectToSuccess($transaction);
     }
 
+
+    public function manualVerifyBooking(Request $request)
+{
+    $bookingId = $request->input('booking_id');
+    $booking = Booking::find($bookingId);
+
+    if (!$booking) {
+        return back()->with('error', 'Booking not found.');
+    }
+
+    $transaction = Transaction::where('transaction_id', $booking->id)
+        ->where('transaction_type', 'booking')
+        ->first();
+
+    if (!$transaction) {
+        return back()->with('error', 'No payment transaction found.');
+    }
+
+    if ($booking->is_paid) {
+        return back()->with('info', 'Booking is already paid.');
+    }
+
+    try {
+        $verification = Paychangu::verify_checkout($transaction->reference);
+        if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+            DB::transaction(function () use ($booking, $transaction, $verification) {
+                $transaction->update([
+                    'status' => 'completed',
+                    'paid_at' => now(),
+                ]);
+                $booking->update([
+                    'is_paid' => true,
+                    'status' => 'confirmed',
+                    'payment_date' => now(),
+                ]);
+            });
+            return back()->with('success', 'Payment confirmed! Booking is now confirmed.');
+        }
+        return back()->with('error', 'Payment not confirmed.');
+    } catch (\Exception $e) {
+        Log::error('Manual booking verification error: ' . $e->getMessage());
+        return back()->with('error', 'Verification failed.');
+    }
+}
     /**
      * Manual verification fallback
      */
