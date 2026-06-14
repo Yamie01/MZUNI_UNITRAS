@@ -259,6 +259,16 @@ Route::prefix('admin')
 
     Route::post('/subscription/manual-verify', [SubscriptionController::class, 'manualVerify'])->name('subscription.manual-verify');
     
+
+
+    Route::get('/test-login', function () {
+    $credentials = ['email' => 'admin@mzuni.ac.mw', 'password' => 'admin123'];
+    if (Auth::attempt($credentials)) {
+        return 'Login successful! Redirecting...';
+    } else {
+        return 'Login failed!';
+    }
+});
 // ================================
 // DEBUG ROUTES (local only)
 // ================================
