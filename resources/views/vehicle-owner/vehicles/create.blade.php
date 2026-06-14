@@ -58,8 +58,8 @@
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Price per KM (MWK)</label>
-                        <input type="number" step="0.01" name="price_per_km" class="form-control" value="{{ old('price_per_km') }}">
+                        <label class="form-label">Price per seat (MWK)</label>
+                        <input type="number" step="0.01" name="price_per_seat" class="form-control" value="{{ old('price_per_seat') }}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Price per Day (MWK)</label>
