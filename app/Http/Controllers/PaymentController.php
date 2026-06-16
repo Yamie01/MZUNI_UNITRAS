@@ -55,12 +55,6 @@ class PaymentController extends Controller
             ]);
 
             if ($response['success']) {
-                // ✅ Update transaction with the actual PayChangu reference
-                $actualTxRef = $response['tx_ref'] ?? $txRef;
-                if ($actualTxRef !== $txRef) {
-                    $transaction->update(['reference' => $actualTxRef]);
-                    Log::info('Transaction reference updated', ['old' => $txRef, 'new' => $actualTxRef]);
-                }
                 return redirect($response['checkout_url']);
             }
 
@@ -106,7 +100,7 @@ class PaymentController extends Controller
                 'first_name' => auth()->user()->name,
                 'last_name' => '',
                 'currency' => 'MWK',
-                'return_url' => url('/payment/return'),
+                'return_url' => url('/payment/return'), // fixed: not /api/payment/return
                 'callback_url' => url('/api/bike-rental/webhook'),
                 'meta' => [
                     'transaction_id' => $transaction->id,
@@ -118,12 +112,6 @@ class PaymentController extends Controller
             ]);
 
             if ($response['success']) {
-                // ✅ Update transaction with the actual PayChangu reference
-                $actualTxRef = $response['tx_ref'] ?? $txRef;
-                if ($actualTxRef !== $txRef) {
-                    $transaction->update(['reference' => $actualTxRef]);
-                    Log::info('Transaction reference updated', ['old' => $txRef, 'new' => $actualTxRef]);
-                }
                 return redirect($response['checkout_url']);
             }
 
@@ -135,6 +123,25 @@ class PaymentController extends Controller
     }
 
     /**
+ * Initiate payment for mobile app
+ */
+public function initiateMobile(Request $request)
+{
+    $request->validate([
+        'booking_id' => 'sometimes|exists:bookings,id',
+        'rental_id' => 'sometimes|exists:bike_rentals,id',
+    ]);
+
+    if ($request->booking_id) {
+        $booking = Booking::find($request->booking_id);
+        return $this->initiate($booking);
+    } else {
+        $rental = BikeRental::find($request->rental_id);
+        return $this->initiateRental($rental);
+    }
+    }
+
+    /**
      * Return URL – user comes back after payment (browser redirect)
      */
     public function handleReturn(Request $request)
@@ -142,7 +149,6 @@ class PaymentController extends Controller
         $tx_ref = $request->query('tx_ref');
         $status = $request->query('status');
 
-        Log::info('Return URL hit with params', $request->all());
         Log::info('Return URL called', ['tx_ref' => $tx_ref, 'status' => $status]);
 
         if (!$tx_ref || $status !== 'success') {
@@ -159,6 +165,7 @@ class PaymentController extends Controller
             return $this->redirectToSuccess($transaction);
         }
 
+        // Verify with PayChangu API
         $verification = Paychangu::verify_checkout($tx_ref);
         if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
             DB::transaction(function () use ($transaction, $verification) {
@@ -296,11 +303,12 @@ class PaymentController extends Controller
         Log::info('updateRelatedModel called', [
             'transaction_id' => $transaction->id,
             'transaction_type' => $transaction->transaction_type,
-            'reference' => $transaction->reference,
+            'transaction_id_field' => $transaction->transaction_id,
         ]);
 
         if ($transaction->transaction_type === 'booking') {
             $booking = Booking::find($transaction->transaction_id);
+            Log::info('Booking found?', ['found' => $booking ? 'yes' : 'no']);
             if ($booking && !$booking->is_paid) {
                 $booking->update([
                     'is_paid' => true,
@@ -311,6 +319,7 @@ class PaymentController extends Controller
             }
         } elseif ($transaction->transaction_type === 'bike_rental') {
             $rental = BikeRental::find($transaction->transaction_id);
+            Log::info('Rental found?', ['found' => $rental ? 'yes' : 'no']);
             if ($rental && !$rental->is_paid) {
                 $rental->update([
                     'is_paid' => true,
@@ -322,11 +331,6 @@ class PaymentController extends Controller
                     Log::info('Bike updated to rented', ['bike_id' => $rental->bike_id]);
                 }
                 Log::info('Rental updated', ['rental_id' => $rental->id]);
-            } else {
-                Log::warning('Rental not found or already paid', [
-                    'rental_id' => $transaction->transaction_id,
-                    'is_paid' => $rental ? $rental->is_paid : 'rental not found'
-                ]);
             }
         }
     }
@@ -370,23 +374,17 @@ class PaymentController extends Controller
             $data = $request->all();
             Log::info('Webhook parsed data', $data);
 
-            // ✅ Check both event types: 'api.charge.payment' AND 'checkout.payment'
-            $eventType = $data['event_type'] ?? '';
-            if (($eventType === 'api.charge.payment' || $eventType === 'checkout.payment') && ($data['status'] ?? '') === 'success') {
-                // ✅ Use tx_ref from the payload (this matches what we stored after update)
+            // Check both event_type and status, then use tx_ref first
+            if (($data['event_type'] ?? '') === 'api.charge.payment' && ($data['status'] ?? '') === 'success') {
+                // PayChangu sends both 'reference' and 'tx_ref' – use tx_ref first
                 $reference = $data['tx_ref'] ?? $data['reference'];
-                Log::info('Processing successful payment', ['reference' => $reference, 'event_type' => $eventType]);
+                Log::info('Processing successful payment', ['reference' => $reference]);
 
                 $transaction = Transaction::where('reference', $reference)->first();
                 if (!$transaction) {
                     Log::error('Transaction not found', ['reference' => $reference]);
                     return response()->json(['error' => 'Transaction not found'], 404);
                 }
-
-                Log::info('Transaction found', [
-                    'transaction_id' => $transaction->id,
-                    'current_status' => $transaction->status,
-                ]);
 
                 if ($transaction->status === 'completed') {
                     return response()->json(['message' => 'Already processed'], 200);
