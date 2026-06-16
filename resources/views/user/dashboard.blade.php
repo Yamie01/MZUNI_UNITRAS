@@ -215,6 +215,46 @@
                         </div>
                     </div>
 
+                    <!-- Stats Cards -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-3 col-sm-6">
+                                <div class="stat-card d-flex align-items-center">
+                                    <div class="stat-icon me-3"><i class="fas fa-coins"></i></div>
+                                    <div>
+                                        <h3 class="fw-bold mb-0">MWK {{ number_format($totalSpent ?? 0, 0) }}</h3>
+                                        <p class="text-muted mb-0">Total Spent</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="stat-card d-flex align-items-center">
+                                    <div class="stat-icon me-3"><i class="fas fa-car"></i></div>
+                                    <div>
+                                        <h3 class="fw-bold mb-0">{{ $totalRides ?? 0 }}</h3>
+                                        <p class="text-muted mb-0">Rides Taken</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="stat-card d-flex align-items-center">
+                                    <div class="stat-icon me-3"><i class="fas fa-bicycle"></i></div>
+                                    <div>
+                                        <h3 class="fw-bold mb-0">{{ $totalRentals ?? 0 }}</h3>
+                                        <p class="text-muted mb-0">Bikes Rented</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="stat-card d-flex align-items-center">
+                                    <div class="stat-icon me-3"><i class="fas fa-ticket-alt"></i></div>
+                                    <div>
+                                        <h3 class="fw-bold mb-0">MWK {{ number_format($moneySaved ?? 0, 0) }}</h3>
+                                        <p class="text-muted mb-0">Saved with Subscription</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     <!-- Recent Bike Rentals with Full Actions -->
                     <div class="mt-4">
                         <h5 class="fw-bold mb-3"><i class="fas fa-history text-primary me-2"></i>Recent Bike Rentals</h5>

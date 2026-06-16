@@ -23,259 +23,258 @@ class PaymentController extends Controller
         }
 
         $totalAmount = $booking->total_price;
-        $platformFee = $totalAmount * 0.20;
-        $ownerEarnings = $totalAmount * 0.80;
         $txRef = 'TXN-BOOK-' . $booking->id . '-' . time();
 
-        $transaction = Transaction::create([
-            'reference'        => $txRef,
-            'transaction_type' => 'booking',
-            'transaction_id'   => $booking->id,
-            'amount'           => $totalAmount,
-            'platform_fee'     => $platformFee,
-            'owner_earnings'   => $ownerEarnings,
-            'status'           => 'pending',
-        ]);
-
-        $booking->update([
-            'platform_fee'   => $platformFee,
-            'owner_earnings' => $ownerEarnings,
-        ]);
+        $transaction = Transaction::updateOrCreate(
+            ['transaction_id' => $booking->id, 'transaction_type' => 'booking'],
+            [
+                'reference' => $txRef,
+                'amount' => $totalAmount,
+                'platform_fee' => $totalAmount * 0.20,
+                'owner_earnings' => $totalAmount * 0.80,
+                'status' => 'pending',
+            ]
+        );
 
         try {
             $response = Paychangu::create_checkout_link([
-                'amount'       => $totalAmount,
-                'email'        => auth()->user()->email,
-                'first_name'   => auth()->user()->name,
-                'last_name'    => '',
-                'currency'     => 'MWK',
-                'return_url'   => url('/payment/return'),
-                'callback_url' => url('/payment/webhook'),
+                'amount' => $totalAmount,
+                'email' => auth()->user()->email,
+                'first_name' => auth()->user()->name,
+                'last_name' => '',
+                'currency' => 'MWK',
+                'return_url' => url('/payment/return'),
+                'callback_url' => url('/api/bike-rental/webhook'),
                 'meta' => [
                     'transaction_id' => $transaction->id,
-                    'booking_id'     => $booking->id,
-                    'user_id'        => auth()->id(),
-                    'tx_ref'         => $txRef,
-                    'payment_type'   => 'ride_booking',
+                    'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'tx_ref' => $txRef,
+                    'payment_type' => 'ride_booking',
                 ],
             ]);
 
             if ($response['success']) {
-                // Update with the actual reference from PayChangu
-                $actualTxRef = $response['tx_ref'];
-                $transaction->update(['reference' => $actualTxRef]);
-                
-                session([
-                    'pending_transaction_id' => $transaction->id,
-                    'pending_booking_id'     => $booking->id,
-                ]);
+                // ✅ Update transaction with the actual PayChangu reference
+                $actualTxRef = $response['tx_ref'] ?? $txRef;
+                if ($actualTxRef !== $txRef) {
+                    $transaction->update(['reference' => $actualTxRef]);
+                    Log::info('Transaction reference updated', ['old' => $txRef, 'new' => $actualTxRef]);
+                }
                 return redirect($response['checkout_url']);
             }
+
             return back()->with('error', 'Unable to initiate payment.');
         } catch (\Exception $e) {
             Log::error('Payment initiation error: ' . $e->getMessage());
             return back()->with('error', 'Payment service error.');
         }
-         dd('Initiate method reached', $booking->id);
     }
 
     /**
      * Initiate payment for a bike rental
      */
     public function initiateRental(BikeRental $rental)
-{
-    if ($rental->user_id !== auth()->id()) {
-        abort(403);
-    }
-    
-    if ($rental->is_paid) {
-        return redirect()->route('user.bike-rentals.show', $rental)
-            ->with('error', 'Already paid.');
-    }
-
-    $totalAmount = $rental->total_amount;
-    $txRef = 'RENT-' . $rental->id . '-' . time();
-
-    // Update or create transaction
-    $transaction = Transaction::updateOrCreate(
-        ['transaction_id' => $rental->id, 'transaction_type' => 'bike_rental'],
-        [
-            'reference' => $txRef,
-            'amount' => $totalAmount,
-            'platform_fee' => $totalAmount,
-            'owner_earnings' => 0,
-            'status' => 'pending',
-        ]
-    );
-
-    try {
-        $response = Paychangu::create_checkout_link([
-            'amount' => $totalAmount,
-            'email' => auth()->user()->email,
-            'first_name' => auth()->user()->name,
-            'last_name' => '',
-            'currency' => 'MWK',
-            'return_url' => url('/payment/return'),
-            'callback_url' => url('/payment/webhook'),
-            'meta' => [
-                'transaction_id' => $transaction->id,
-                'rental_id' => $rental->id,
-                'user_id' => auth()->id(),
-                'tx_ref' => $txRef,
-                'payment_type' => 'bike_rental',
-            ],
-        ]);
-
-        if ($response['success']) {
-            return redirect($response['checkout_url']);
+    {
+        if ($rental->user_id !== auth()->id()) {
+            abort(403);
         }
 
-        return back()->with('error', 'Unable to initiate payment: ' . ($response['message'] ?? 'Unknown error'));
-    } catch (\Exception $e) {
-        Log::error('Rental payment error: ' . $e->getMessage());
-        return back()->with('error', 'Payment service error: ' . $e->getMessage());
+        if ($rental->is_paid) {
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'Already paid.');
+        }
+
+        $totalAmount = $rental->total_amount;
+        $txRef = 'RENT-' . $rental->id . '-' . time();
+
+        $transaction = Transaction::updateOrCreate(
+            ['transaction_id' => $rental->id, 'transaction_type' => 'bike_rental'],
+            [
+                'reference' => $txRef,
+                'amount' => $totalAmount,
+                'platform_fee' => $totalAmount,
+                'owner_earnings' => 0,
+                'status' => 'pending',
+            ]
+        );
+
+        try {
+            $response = Paychangu::create_checkout_link([
+                'amount' => $totalAmount,
+                'email' => auth()->user()->email,
+                'first_name' => auth()->user()->name,
+                'last_name' => '',
+                'currency' => 'MWK',
+                'return_url' => url('/payment/return'),
+                'callback_url' => url('/api/bike-rental/webhook'),
+                'meta' => [
+                    'transaction_id' => $transaction->id,
+                    'rental_id' => $rental->id,
+                    'user_id' => auth()->id(),
+                    'tx_ref' => $txRef,
+                    'payment_type' => 'bike_rental',
+                ],
+            ]);
+
+            if ($response['success']) {
+                // ✅ Update transaction with the actual PayChangu reference
+                $actualTxRef = $response['tx_ref'] ?? $txRef;
+                if ($actualTxRef !== $txRef) {
+                    $transaction->update(['reference' => $actualTxRef]);
+                    Log::info('Transaction reference updated', ['old' => $txRef, 'new' => $actualTxRef]);
+                }
+                return redirect($response['checkout_url']);
+            }
+
+            return back()->with('error', 'Unable to initiate payment: ' . ($response['message'] ?? 'Unknown error'));
+        } catch (\Exception $e) {
+            Log::error('Rental payment error: ' . $e->getMessage());
+            return back()->with('error', 'Payment service error: ' . $e->getMessage());
+        }
     }
-}
+
     /**
-     * Return URL – user comes back after payment
+     * Return URL – user comes back after payment (browser redirect)
      */
     public function handleReturn(Request $request)
     {
         $tx_ref = $request->query('tx_ref');
         $status = $request->query('status');
 
+        Log::info('Return URL hit with params', $request->all());
+        Log::info('Return URL called', ['tx_ref' => $tx_ref, 'status' => $status]);
+
         if (!$tx_ref || $status !== 'success') {
             return redirect()->route('dashboard')->with('error', 'Payment was not completed.');
         }
 
         $transaction = Transaction::where('reference', $tx_ref)->first();
-        
         if (!$transaction) {
+            Log::error('Transaction not found in return', ['tx_ref' => $tx_ref]);
             return redirect()->route('dashboard')->with('error', 'Transaction not found.');
-        }
-
-        // Verify with PayChangu
-        $verification = Paychangu::verify_checkout($tx_ref);
-        
-        if (!$verification['success'] || ($verification['data']['status'] ?? '') !== 'success') {
-            return redirect()->route('dashboard')->with('error', 'Payment verification failed.');
         }
 
         if ($transaction->status === 'completed') {
             return $this->redirectToSuccess($transaction);
         }
 
-        DB::transaction(function () use ($transaction, $verification) {
-            $transaction->update([
-                'status' => 'completed',
-                'payment_details' => json_encode($verification['data']['authorization'] ?? []),
-                'paid_at' => now(),
-            ]);
-            $this->updateRelatedModel($transaction);
-        });
-
-        return $this->redirectToSuccess($transaction);
-    }
-
-
-    public function manualVerifyBooking(Request $request)
-{
-    $bookingId = $request->input('booking_id');
-    $booking = Booking::find($bookingId);
-
-    if (!$booking) {
-        return back()->with('error', 'Booking not found.');
-    }
-
-    $transaction = Transaction::where('transaction_id', $booking->id)
-        ->where('transaction_type', 'booking')
-        ->first();
-
-    if (!$transaction) {
-        return back()->with('error', 'No payment transaction found.');
-    }
-
-    if ($booking->is_paid) {
-        return back()->with('info', 'Booking is already paid.');
-    }
-
-    try {
-        $verification = Paychangu::verify_checkout($transaction->reference);
+        $verification = Paychangu::verify_checkout($tx_ref);
         if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
-            DB::transaction(function () use ($booking, $transaction, $verification) {
+            DB::transaction(function () use ($transaction, $verification) {
                 $transaction->update([
                     'status' => 'completed',
+                    'payment_details' => json_encode($verification['data']['authorization'] ?? []),
                     'paid_at' => now(),
                 ]);
-                $booking->update([
-                    'is_paid' => true,
-                    'status' => 'confirmed',
-                    'payment_date' => now(),
-                ]);
+                $this->updateRelatedModel($transaction);
             });
-            return back()->with('success', 'Payment confirmed! Booking is now confirmed.');
+            return $this->redirectToSuccess($transaction);
         }
-        return back()->with('error', 'Payment not confirmed.');
-    } catch (\Exception $e) {
-        Log::error('Manual booking verification error: ' . $e->getMessage());
-        return back()->with('error', 'Verification failed.');
+
+        return redirect()->route('dashboard')->with('error', 'Payment verification failed.');
     }
-}
+
     /**
-     * Manual verification fallback
+     * Manual verification for ride bookings (fallback)
+     */
+    public function manualVerifyBooking(Request $request)
+    {
+        $bookingId = $request->input('booking_id');
+        $booking = Booking::find($bookingId);
+
+        if (!$booking) {
+            return back()->with('error', 'Booking not found.');
+        }
+
+        $transaction = Transaction::where('transaction_id', $booking->id)
+            ->where('transaction_type', 'booking')
+            ->first();
+
+        if (!$transaction) {
+            return back()->with('error', 'No payment transaction found.');
+        }
+
+        if ($booking->is_paid) {
+            return back()->with('info', 'Booking is already paid.');
+        }
+
+        try {
+            $verification = Paychangu::verify_checkout($transaction->reference);
+            if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+                DB::transaction(function () use ($booking, $transaction, $verification) {
+                    $transaction->update([
+                        'status' => 'completed',
+                        'paid_at' => now(),
+                    ]);
+                    $booking->update([
+                        'is_paid' => true,
+                        'status' => 'confirmed',
+                        'payment_date' => now(),
+                    ]);
+                });
+                return back()->with('success', 'Payment confirmed! Booking is now confirmed.');
+            }
+            return back()->with('error', 'Payment not confirmed.');
+        } catch (\Exception $e) {
+            Log::error('Manual booking verification error: ' . $e->getMessage());
+            return back()->with('error', 'Verification failed.');
+        }
+    }
+
+    /**
+     * Manual verification for bike rentals (fallback)
      */
     public function manualVerify(Request $request)
-{
-    $rentalId = $request->input('rental_id');
-    $rental = BikeRental::find($rentalId);
-    
-    if (!$rental) {
-        return back()->with('error', 'Rental not found.');
-    }
-    
-    // Find the transaction
-    $transaction = Transaction::where('transaction_id', $rental->id)
-        ->where('transaction_type', 'bike_rental')
-        ->first();
-    
-    if (!$transaction) {
-        return back()->with('error', 'No payment transaction found.');
-    }
-    
-    if ($rental->is_paid) {
-        return back()->with('info', 'Rental is already active.');
-    }
-    
-    try {
-        $verification = Paychangu::verify_checkout($transaction->reference);
-        
-        if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
-            DB::transaction(function () use ($rental, $transaction, $verification) {
-                $transaction->update([
-                    'status' => 'completed',
-                    'paid_at' => now(),
-                ]);
-                
-                $rental->update([
-                    'is_paid' => true,
-                    'status' => 'active',
-                    'payment_date' => now(),
-                ]);
-                
-                if ($rental->bike) {
-                    $rental->bike->update(['status' => 'rented']);
-                }
-            });
-            
-            return back()->with('success', 'Payment confirmed! Rental is now active.');
-        } else {
-            return back()->with('error', 'Payment not confirmed. Status: ' . ($verification['data']['status'] ?? 'unknown'));
+    {
+        $rentalId = $request->input('rental_id');
+        $rental = BikeRental::find($rentalId);
+
+        if (!$rental) {
+            return back()->with('error', 'Rental not found.');
         }
-    } catch (\Exception $e) {
-        Log::error('Manual verification error: ' . $e->getMessage());
-        return back()->with('error', 'Verification failed: ' . $e->getMessage());
+
+        $transaction = Transaction::where('transaction_id', $rental->id)
+            ->where('transaction_type', 'bike_rental')
+            ->first();
+
+        if (!$transaction) {
+            return back()->with('error', 'No payment transaction found.');
+        }
+
+        if ($rental->is_paid) {
+            return back()->with('info', 'Rental is already active.');
+        }
+
+        try {
+            $verification = Paychangu::verify_checkout($transaction->reference);
+            if ($verification['success'] && ($verification['data']['status'] ?? '') === 'success') {
+                DB::transaction(function () use ($rental, $transaction, $verification) {
+                    $transaction->update([
+                        'status' => 'completed',
+                        'paid_at' => now(),
+                    ]);
+
+                    $rental->update([
+                        'is_paid' => true,
+                        'status' => 'active',
+                        'payment_date' => now(),
+                    ]);
+
+                    if ($rental->bike) {
+                        $rental->bike->update(['status' => 'rented']);
+                    }
+                });
+                return back()->with('success', 'Payment confirmed! Rental is now active.');
+            } else {
+                return back()->with('error', 'Payment not confirmed. Status: ' . ($verification['data']['status'] ?? 'unknown'));
+            }
+        } catch (\Exception $e) {
+            Log::error('Manual verification error: ' . $e->getMessage());
+            return back()->with('error', 'Verification failed: ' . $e->getMessage());
+        }
     }
-}
+
     /**
      * Redirect to the appropriate success page
      */
@@ -294,6 +293,12 @@ class PaymentController extends Controller
      */
     private function updateRelatedModel(Transaction $transaction)
     {
+        Log::info('updateRelatedModel called', [
+            'transaction_id' => $transaction->id,
+            'transaction_type' => $transaction->transaction_type,
+            'reference' => $transaction->reference,
+        ]);
+
         if ($transaction->transaction_type === 'booking') {
             $booking = Booking::find($transaction->transaction_id);
             if ($booking && !$booking->is_paid) {
@@ -302,6 +307,7 @@ class PaymentController extends Controller
                     'status' => 'confirmed',
                     'payment_date' => now(),
                 ]);
+                Log::info('Booking updated', ['booking_id' => $booking->id]);
             }
         } elseif ($transaction->transaction_type === 'bike_rental') {
             $rental = BikeRental::find($transaction->transaction_id);
@@ -313,59 +319,99 @@ class PaymentController extends Controller
                 ]);
                 if ($rental->bike) {
                     $rental->bike->update(['status' => 'rented']);
+                    Log::info('Bike updated to rented', ['bike_id' => $rental->bike_id]);
                 }
+                Log::info('Rental updated', ['rental_id' => $rental->id]);
+            } else {
+                Log::warning('Rental not found or already paid', [
+                    'rental_id' => $transaction->transaction_id,
+                    'is_paid' => $rental ? $rental->is_paid : 'rental not found'
+                ]);
             }
         }
     }
 
+    /**
+     * Cancel URL – user cancelled the payment
+     */
     public function handleCancel(Request $request)
     {
         return redirect()->route('dashboard')->with('error', 'You cancelled the payment.');
     }
 
+    /**
+     * Webhook handler – PayChangu calls this server-to-server
+     */
     public function handleWebhook(Request $request)
     {
-    $payload = $request->getContent();
-    $signature = $request->header('X-Signature');
-    $webhookSecret = config('paychangu.webhook_secret');
-    $computedSignature = hash_hmac('sha256', $payload, $webhookSecret);
+        try {
+            $payload = $request->getContent();
+            Log::info('Webhook raw payload', ['payload' => $payload]);
 
-    if ($computedSignature !== $signature) {
-        Log::warning('Invalid webhook signature');
-        return response()->json(['error' => 'Invalid signature'], 401);
-    }
+            // Try multiple header names (case‑insensitive fallback)
+            $signature = $request->header('Signature') ?: $request->header('signature') ?: $request->header('X-Signature');
+            $webhookSecret = config('paychangu.webhook_secret');
 
-    $data = $request->all();
-    
-    if (($data['event_type'] ?? '') === 'api.charge.payment' && ($data['status'] ?? '') === 'success') {
-        $transaction = Transaction::where('reference', $data['reference'])->first();
-        
-        if ($transaction && $transaction->status !== 'completed') {
-            DB::transaction(function () use ($transaction, $data) {
-                $transaction->update([
-                    'status' => 'completed',
-                    'payment_details' => json_encode($data['authorization'] ?? []),
-                    'paid_at' => now(),
+            if (!$webhookSecret) {
+                Log::error('Webhook secret is missing in config');
+                return response()->json(['error' => 'Webhook secret missing'], 500);
+            }
+
+            $computedSignature = hash_hmac('sha256', $payload, $webhookSecret);
+            if ($computedSignature !== $signature) {
+                Log::warning('Invalid webhook signature', [
+                    'received' => $signature,
+                    'computed' => $computedSignature,
+                    'secret' => $webhookSecret,
                 ]);
-                
-                // ✅ Handle subscription payments
-                if ($transaction->transaction_type === 'subscription') {
-                    $subscription = Subscription::find($transaction->transaction_id);
-                    if ($subscription && $subscription->status !== 'active') {
-                        $subscription->update(['status' => 'active']);
-                        Log::info('Subscription activated via webhook', [
-                            'subscription_id' => $subscription->id,
-                            'user_id' => $subscription->user_id
-                        ]);
-                    }
-                } else {
-                    // Handle booking or bike rental
-                    $this->updateRelatedModel($transaction);
-                }
-            });
-        }
-    }
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
 
-    return response()->json(['status' => 'ok'], 200);
+            $data = $request->all();
+            Log::info('Webhook parsed data', $data);
+
+            // ✅ Check both event types: 'api.charge.payment' AND 'checkout.payment'
+            $eventType = $data['event_type'] ?? '';
+            if (($eventType === 'api.charge.payment' || $eventType === 'checkout.payment') && ($data['status'] ?? '') === 'success') {
+                // ✅ Use tx_ref from the payload (this matches what we stored after update)
+                $reference = $data['tx_ref'] ?? $data['reference'];
+                Log::info('Processing successful payment', ['reference' => $reference, 'event_type' => $eventType]);
+
+                $transaction = Transaction::where('reference', $reference)->first();
+                if (!$transaction) {
+                    Log::error('Transaction not found', ['reference' => $reference]);
+                    return response()->json(['error' => 'Transaction not found'], 404);
+                }
+
+                Log::info('Transaction found', [
+                    'transaction_id' => $transaction->id,
+                    'current_status' => $transaction->status,
+                ]);
+
+                if ($transaction->status === 'completed') {
+                    return response()->json(['message' => 'Already processed'], 200);
+                }
+
+                DB::transaction(function () use ($transaction, $data) {
+                    $transaction->update([
+                        'status' => 'completed',
+                        'payment_details' => json_encode($data['authorization'] ?? []),
+                        'paid_at' => now(),
+                    ]);
+                    $this->updateRelatedModel($transaction);
+                });
+
+                Log::info('Webhook processed successfully', ['transaction_id' => $transaction->id]);
+            }
+
+            return response()->json(['status' => 'ok'], 200);
+        } catch (\Exception $e) {
+            Log::error('Webhook exception: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
     }
 }

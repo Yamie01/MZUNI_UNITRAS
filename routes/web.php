@@ -40,44 +40,42 @@ use App\Http\Controllers\User\BikeRentalPaymentController;
 */
 
 // ================================
-// PUBLIC ROUTES
+// PUBLIC WEBHOOK – NO CSRF, NO AUTH (MUST BE AT THE TOP)
+// ================================
+Route::post('/api/bike-rental/webhook', [PaymentController::class, 'handleWebhook'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('api.bike-rental.webhook');
+
+// ================================
+// PUBLIC ROUTES (no auth)
 // ================================
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/search', [HomeController::class, 'search'])->name('search');
+
+// Authentication routes (Breeze)
 require __DIR__.'/auth.php';
 
 // ================================
-// PAYMENT CALLBACK & WEBHOOK (public)
+// PAYMENT CALLBACK & RETURN (public)
 // ================================
 Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/return', [PaymentController::class, 'handleReturn'])->name('return');
     Route::get('/cancel', [PaymentController::class, 'handleCancel'])->name('cancel');
-    Route::post('/webhook', [PaymentController::class, 'handleWebhook'])->name('webhook');
 });
 
-// Bike rental webhook (public)
-Route::post('/bike-rental/webhook', [BikeRentalPaymentController::class, 'handleWebhook'])->name('user.bike-rentals.webhook');
+// Bike rental return (public)
 Route::get('/bike-rental/payment/return', [BikeRentalPaymentController::class, 'handleReturn'])->name('user.bike-rentals.payment.return');
 
-// Store redirect helper
+// Store redirect helper (public)
 Route::post('/store-redirect', function (Request $request) {
     session(['url.intended' => $request->redirect_to]);
     return response()->json(['success' => true]);
 })->name('store.redirect');
 
 // ================================
-// SUBSCRIPTION ROUTES
+// SUBSCRIPTION ROUTES (public callback)
 // ================================
 Route::get('/subscription/callback', [SubscriptionController::class, 'callback'])->name('subscription.callback');
-
-Route::middleware('auth')->group(function () {
-    Route::prefix('subscription')->name('subscription.')->group(function () {
-        Route::get('/', [SubscriptionController::class, 'index'])->name('index');
-        Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe');
-        Route::post('/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
-    });
-    Route::post('/subscription/manual-verify', [SubscriptionController::class, 'manualVerify'])->name('subscription.manual-verify');
-});
 
 // ================================
 // AUTHENTICATED USER ROUTES
@@ -91,7 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ------------------------------
-    // RIDE BOOKING ROUTES
+    // RIDE BOOKING
     // ------------------------------
     Route::get('/book/{advertisement}', [UserBookingController::class, 'create'])->name('user.bookings.create');
     Route::post('/book/{advertisement}', [UserBookingController::class, 'store'])->name('user.bookings.store');
@@ -102,21 +100,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/{booking}/cancel', [UserBookingController::class, 'cancel'])->name('cancel');
         Route::get('/{booking}/payment', [UserBookingController::class, 'payment'])->name('payment');
         Route::post('/{booking}/payment', [UserBookingController::class, 'processPayment'])->name('process-payment');
-
-        // ✅ ADDED: redirect to PayChangu
         Route::get('/{booking}/pay', [UserBookingController::class, 'initiatePayment'])->name('payment.initiate');
     });
 
     Route::get('/booking/check-subscription/{advertisement}', [UserBookingController::class, 'checkSubscriptionEligibility'])->name('user.bookings.check-subscription');
 
-    // Initiate payment for a booking (alternative using PaymentController)
+    // Payment initiation (alternative)
     Route::get('/payment/{booking}', [PaymentController::class, 'initiate'])->name('payment.initiate');
-    
-    // Manual verification for bookings (fallback)
     Route::post('/payment/manual-verify-booking', [PaymentController::class, 'manualVerifyBooking'])->name('payment.manual-verify-booking');
 
     // ------------------------------
-    // BIKE RENTAL ROUTES
+    // BIKE RENTAL
     // ------------------------------
     Route::prefix('bikes')->name('user.bikes.')->group(function () {
         Route::get('/', [BikeController::class, 'index'])->name('index');
@@ -131,7 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{rental}/cancel', [BikeRentalController::class, 'cancel'])->name('cancel');
         Route::post('/{rental}/return', [BikeRentalController::class, 'returnBike'])->name('return');
 
-        // Rental payment
+        // Rental payment (alternative)
         Route::get('/{rental}/payment', [BikeRentalPaymentController::class, 'create'])->name('payment');
         Route::post('/{rental}/pay', [BikeRentalPaymentController::class, 'initiate'])->name('payment.initiate');
         Route::get('/payment/callback', [BikeRentalPaymentController::class, 'paymentCallback'])->name('payment.callback');
@@ -142,8 +136,21 @@ Route::middleware('auth')->group(function () {
     // Alternative rental payment initiation (uses PaymentController)
     Route::match(['GET', 'POST'], '/payment/rental/{rental}', [PaymentController::class, 'initiateRental'])->name('payment.initiateRental');
 
+    // ✅ MANUAL VERIFICATION FOR BIKE RENTALS – FALLBACK (ADDED)
+    Route::post('/payment/manual-verify', [PaymentController::class, 'manualVerify'])->name('payment.manual-verify');
+
     // ------------------------------
-    // TRACKING ROUTES
+    // SUBSCRIPTION (auth)
+    // ------------------------------
+    Route::prefix('subscription')->name('subscription.')->group(function () {
+        Route::get('/', [SubscriptionController::class, 'index'])->name('index');
+        Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe');
+        Route::post('/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
+    });
+    Route::post('/subscription/manual-verify', [SubscriptionController::class, 'manualVerify'])->name('subscription.manual-verify');
+
+    // ------------------------------
+    // TRACKING
     // ------------------------------
     Route::get('/tracking/ride/{booking}', [TrackingController::class, 'showTracking'])->name('tracking.ride');
     Route::get('/tracking/bike/{rental}', [TrackingController::class, 'showBikeTracking'])->name('tracking.bike');
@@ -232,6 +239,13 @@ Route::prefix('admin')
         Route::get('/live-tracking/bikes', [TrackingController::class, 'adminBikeTracking'])->name('live-tracking.bikes');
         Route::get('/active-bike-rentals', [TrackingController::class, 'getActiveBikeRentals'])->name('active-bike-rentals');
     });
+
+// ================================
+// TEST ROUTES (optional)
+// ================================
+Route::get('/test-ngrok', function () {
+    return 'ngrok is working!';
+});
 
 // ================================
 // DEBUG ROUTES (local only)

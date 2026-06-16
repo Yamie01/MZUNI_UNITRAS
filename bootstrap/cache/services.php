@@ -44,7 +44,8 @@
     40 => 'App\\Providers\\BroadcastServiceProvider',
     41 => 'App\\Providers\\EventServiceProvider',
     42 => 'App\\Providers\\RouteServiceProvider',
-    43 => 'App\\Providers\\AppServiceProvider',
+    43 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+    44 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -75,7 +76,8 @@
     24 => 'App\\Providers\\BroadcastServiceProvider',
     25 => 'App\\Providers\\EventServiceProvider',
     26 => 'App\\Providers\\RouteServiceProvider',
-    27 => 'App\\Providers\\AppServiceProvider',
+    27 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+    28 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (

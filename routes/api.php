@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bikes/{bike}/location', [TrackingController::class, 'updateBikeLocation']);
     Route::get('/bikes/{bike}/location', [TrackingController::class, 'getBikeLocation']);
 });
+Route::post('/bike-rental/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
