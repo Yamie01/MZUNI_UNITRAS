@@ -79,6 +79,12 @@ class AdvertisementController extends Controller
                 ->with('error', 'You need at least one approved vehicle to create an advertisement.');
         }
         
+        {
+        $vehicles = Vehicle::where('owner_id', auth()->id())->get();
+        $locations = Location::orderBy('name')->get();
+        return view('vehicle-owner.advertisements.create', compact('vehicles', 'locations'));
+        }
+
         return view('vehicle-owner.advertisements.create', compact('vehicles'));
     }
 

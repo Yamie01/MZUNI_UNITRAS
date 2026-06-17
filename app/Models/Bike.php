@@ -64,6 +64,8 @@ class Bike extends Model
         return $this->morphOne(VehicleLocation::class, 'trackable')->latest('recorded_at');
     }
 
+    public function location() { return $this->belongsTo(Location::class); }
+    
     public function locations()
     {
         return $this->morphMany(VehicleLocation::class, 'trackable');

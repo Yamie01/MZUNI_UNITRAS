@@ -50,6 +50,10 @@ class BookingController extends Controller
                 ->with('error', 'This ride is no longer available.');
         }
 
+        
+            $locations = Location::orderBy('name')->get();
+            return view('user.book', compact('advertisement', 'locations'));
+            
         // Check for active subscription (for free booking)
         $subscription = Subscription::where('user_id', Auth::id())
             ->where('status', 'active')

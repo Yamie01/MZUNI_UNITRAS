@@ -191,5 +191,62 @@ class BikeRentalController extends Controller
         
         return redirect()->route('user.bike-rentals.show', $rental)
             ->with('success', 'Bike returned successfully!');
+
+        
+        $rental = BikeRental::findOrFail($id);
+    // ... authorization checks ...
+
+    $rental->returned_at = now();
+    $expected = $rental->expected_return_at;
+
+    if (now()->greaterThan($expected)) {
+        $hoursLate = now()->diffInHours($expected);
+        $lateFee = $hoursLate * 500;  // example: MWK 500 per hour
+        $rental->late_fee = $lateFee;
+        $rental->status = 'returned_late'; // optional status
+        $rental->save();
+
+        // Redirect to late fee payment page
+        return redirect()->route('rentals.pay-late-fee', $rental->id)
+            ->with('late_fee', $lateFee);
+    } else {
+        $rental->status = 'completed';
+        $rental->save();
+        return redirect()->back()->with('success', 'Bike returned on time.');
+    }
+    }
+    public function payLateFee($rentalId)
+{
+    $rental = BikeRental::findOrFail($rentalId);
+    if ($rental->late_fee_paid) {
+        return redirect()->route('dashboard')->with('error', 'Already paid.');
+    }
+    return view('rentals.pay-late-fee', compact('rental'));
+}
+
+// Payment initiation (using your PayChanguService)
+public function initiateLateFeePayment(Request $request, $rentalId)
+{
+    $rental = BikeRental::findOrFail($rentalId);
+    $payment = PayChangu::createPayment([
+        'amount' => $rental->late_fee,
+        'currency' => 'MWK',
+        'description' => 'Late fee for bike rental #' . $rental->id,
+        'callback_url' => route('rentals.late-fee-callback'),
+        'return_url' => route('rentals.late-fee-success'),
+    ]);
+    // store payment reference in rental or session
+    return redirect($payment->redirect_url);
+}
+
+// Callback handler
+    public function lateFeeCallback(Request $request)
+    {
+        // verify payment and update rental
+        $rental = BikeRental::where('id', $request->rental_id)->first();
+        $rental->late_fee_paid = true;
+        $rental->status = 'completed';
+        $rental->save();
+        // also record platform revenue (20% of late fee)
     }
 }

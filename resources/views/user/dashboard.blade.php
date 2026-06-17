@@ -75,6 +75,19 @@
     @media (max-width: 768px) {
         .dashboard-sidebar { margin-bottom: 20px; }
     }
+
+    /* Timer card styles */
+    #rentalTimer .display-6 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+    }
+    #rentalTimer .bg-light {
+        background-color: #f8f9fa !important;
+    }
+    #rentalTimer .card-body {
+        padding: 1.5rem;
+    }
 </style>
 @endpush
 
@@ -130,6 +143,62 @@
                         <a href="{{ route('profile.edit') }}" class="btn btn-outline-secondary"><i class="fas fa-user-edit me-2"></i>Edit profile</a>
                     </div>
 
+                    {{-- ACTIVE BIKE RENTAL TIMER --}}
+                    @if($activeRental)
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-bicycle me-2"></i> Active Bike Rental</h5>
+                            <span class="badge bg-light text-primary">Live</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h5>{{ $activeRental->bike->brand }} {{ $activeRental->bike->model }}</h5>
+                                    <p class="mb-1"><i class="fas fa-clock text-primary"></i> Started: {{ $activeRental->start_time->format('d M Y, H:i') }}</p>
+                                    <p class="mb-1"><i class="fas fa-hourglass-half text-warning"></i> Expected Return: {{ $activeRental->expected_return_time->format('d M Y, H:i') }}</p>
+                                    <p><span class="badge bg-success"><i class="fas fa-check-circle"></i> Active</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="rentalTimer" class="text-center p-3 bg-light rounded">
+                                        <div class="display-6 fw-bold" id="timerDisplay">00:00:00</div>
+                                        <div class="small text-muted">Remaining / Overtime</div>
+                                        <div class="row mt-2">
+                                            <div class="col-6">
+                                                <small>Base Fee</small><br>
+                                                <strong id="baseFeeDisplay">MWK {{ number_format($activeRental->base_fee ?? $activeRental->total_amount, 0) }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <small>Overtime Fee</small><br>
+                                                <strong id="overtimeFeeDisplay" class="text-danger">MWK 0</strong>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <h5>Total Due: <span id="totalDueDisplay" class="text-primary">MWK {{ number_format($activeRental->base_fee ?? $activeRental->total_amount, 0) }}</span></h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-3 flex-wrap">
+                                <form action="{{ route('user.bike-rentals.return', $activeRental) }}" method="POST" class="d-inline" id="returnForm">
+                                    @csrf
+                                    <button type="submit" class="btn btn-success" id="returnBtn">
+                                        <i class="fas fa-undo-alt me-2"></i> Return Bike
+                                    </button>
+                                </form>
+                                <a href="{{ route('tracking.bike', $activeRental) }}" class="btn btn-info">
+                                    <i class="fas fa-map-marked-alt me-2"></i> Track
+                                </a>
+                                @if($activeRental->late_fee > 0 && !$activeRental->late_fee_paid)
+                                    <a href="{{ route('rentals.pay-late-fee', $activeRental) }}" class="btn btn-warning" id="payLateFeeBtn">
+                                        <i class="fas fa-credit-card me-2"></i> Pay Late Fee
+                                    </a>
+                                @endif
+                            </div>
+                            <div id="rentalStatus" class="mt-2"></div>
+                        </div>
+                    </div>
+                    @endif
+
                     <!-- Subscription Status Alert -->
                     @php
                         $subscription = App\Models\Subscription::where('user_id', Auth::id())
@@ -168,9 +237,9 @@
                                     </div>
                                     <div class="p-3">
                                         <div class="d-flex justify-content-between">
-                                            <strong class="small">{{ Str::limit($ride->from_location, 15) }}</strong>
+                                            <strong class="small">{{ Str::limit($ride->fromLocation->name ?? $ride->from_location, 15) }}</strong>
                                             <i class="fas fa-arrow-right text-muted fa-xs"></i>
-                                            <strong class="small">{{ Str::limit($ride->to_location, 15) }}</strong>
+                                            <strong class="small">{{ Str::limit($ride->toLocation->name ?? $ride->to_location, 15) }}</strong>
                                         </div>
                                         <div class="small text-muted mt-1">
                                             <i class="far fa-clock me-1"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M H:i') }}
@@ -216,44 +285,44 @@
                     </div>
 
                     <!-- Stats Cards -->
-                        <div class="row g-4 mb-4">
-                            <div class="col-md-3 col-sm-6">
-                                <div class="stat-card d-flex align-items-center">
-                                    <div class="stat-icon me-3"><i class="fas fa-coins"></i></div>
-                                    <div>
-                                        <h3 class="fw-bold mb-0">MWK {{ number_format($totalSpent ?? 0, 0) }}</h3>
-                                        <p class="text-muted mb-0">Total Spent</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6">
-                                <div class="stat-card d-flex align-items-center">
-                                    <div class="stat-icon me-3"><i class="fas fa-car"></i></div>
-                                    <div>
-                                        <h3 class="fw-bold mb-0">{{ $totalRides ?? 0 }}</h3>
-                                        <p class="text-muted mb-0">Rides Taken</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6">
-                                <div class="stat-card d-flex align-items-center">
-                                    <div class="stat-icon me-3"><i class="fas fa-bicycle"></i></div>
-                                    <div>
-                                        <h3 class="fw-bold mb-0">{{ $totalRentals ?? 0 }}</h3>
-                                        <p class="text-muted mb-0">Bikes Rented</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6">
-                                <div class="stat-card d-flex align-items-center">
-                                    <div class="stat-icon me-3"><i class="fas fa-ticket-alt"></i></div>
-                                    <div>
-                                        <h3 class="fw-bold mb-0">MWK {{ number_format($moneySaved ?? 0, 0) }}</h3>
-                                        <p class="text-muted mb-0">Saved with Subscription</p>
-                                    </div>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-3 col-sm-6">
+                            <div class="stat-card d-flex align-items-center">
+                                <div class="stat-icon me-3"><i class="fas fa-coins"></i></div>
+                                <div>
+                                    <h3 class="fw-bold mb-0">MWK {{ number_format($totalSpent ?? 0, 0) }}</h3>
+                                    <p class="text-muted mb-0">Total Spent</p>
                                 </div>
                             </div>
                         </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="stat-card d-flex align-items-center">
+                                <div class="stat-icon me-3"><i class="fas fa-car"></i></div>
+                                <div>
+                                    <h3 class="fw-bold mb-0">{{ $totalRides ?? 0 }}</h3>
+                                    <p class="text-muted mb-0">Rides Taken</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="stat-card d-flex align-items-center">
+                                <div class="stat-icon me-3"><i class="fas fa-bicycle"></i></div>
+                                <div>
+                                    <h3 class="fw-bold mb-0">{{ $totalRentals ?? 0 }}</h3>
+                                    <p class="text-muted mb-0">Bikes Rented</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="stat-card d-flex align-items-center">
+                                <div class="stat-icon me-3"><i class="fas fa-ticket-alt"></i></div>
+                                <div>
+                                    <h3 class="fw-bold mb-0">MWK {{ number_format($moneySaved ?? 0, 0) }}</h3>
+                                    <p class="text-muted mb-0">Saved with Subscription</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Recent Bike Rentals with Full Actions -->
                     <div class="mt-4">
@@ -276,7 +345,7 @@
                                         </td>
                                         <td><strong>MWK {{ number_format($rental->total_amount ?? $rental->total_price, 0) }}</strong></td>
                                         <td>
-                                            @if($rental->status === 'active')
+                                            @if($rental->status === 'active' || $rental->status === 'rented')
                                                 <span class="badge bg-success">Active</span>
                                             @elseif($rental->status === 'completed')
                                                 <span class="badge bg-info">Completed</span>
@@ -290,7 +359,7 @@
                                         </td>
                                         <td>
                                             <!-- Track Button (Active only) -->
-                                            @if($rental->status === 'active')
+                                            @if($rental->status === 'active' || $rental->status === 'rented')
                                                 <a href="{{ route('tracking.bike', $rental) }}" class="btn btn-sm btn-info mb-1">
                                                     <i class="fas fa-map-marked-alt"></i> Track
                                                 </a>
@@ -322,6 +391,13 @@
                                                     </button>
                                                 </form>
                                             @endif
+
+                                            <!-- Late Fee payment if applicable -->
+                                            @if($rental->late_fee > 0 && !$rental->late_fee_paid && $rental->status === 'completed')
+                                                <a href="{{ route('rentals.pay-late-fee', $rental) }}" class="btn btn-sm btn-warning">
+                                                    <i class="fas fa-credit-card me-1"></i> Pay Late Fee
+                                                </a>
+                                            @endif
                                         </td>
                                     </tr>
                                     @empty
@@ -348,9 +424,9 @@
                                     </div>
                                     <div class="p-3">
                                         <div class="d-flex justify-content-between">
-                                            <strong>{{ $ride->from_location }}</strong>
+                                            <strong>{{ $ride->fromLocation->name ?? $ride->from_location }}</strong>
                                             <i class="fas fa-arrow-right text-muted"></i>
-                                            <strong>{{ $ride->to_location }}</strong>
+                                            <strong>{{ $ride->toLocation->name ?? $ride->to_location }}</strong>
                                         </div>
                                         <div class="small text-muted mt-1">
                                             <i class="far fa-calendar-alt me-1"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
@@ -408,7 +484,7 @@
                             <tbody>
                                 @forelse($allBookings ?? [] as $booking)
                                 <tr>
-                                    <td>{{ $booking->advertisement->from_location ?? 'N/A' }} → {{ $booking->advertisement->to_location ?? 'N/A' }}</td>
+                                    <td>{{ $booking->advertisement->fromLocation->name ?? $booking->advertisement->from_location ?? 'N/A' }} → {{ $booking->advertisement->toLocation->name ?? $booking->advertisement->to_location ?? 'N/A' }}</td>
                                     <td>{{ \Carbon\Carbon::parse($booking->trip_date)->format('d M Y') }}</td>
                                     <td>{{ $booking->number_of_seats }}</td>
                                     <td>MWK {{ number_format($booking->total_price, 0) }}</td>
@@ -456,7 +532,7 @@
                                     <td>{{ $rental->duration }} {{ ucfirst($rental->duration_type) }}(s)</td>
                                     <td>MWK {{ number_format($rental->total_amount ?? $rental->total_price, 0) }}</td>
                                     <td>
-                                        @if($rental->status === 'active')
+                                        @if($rental->status === 'active' || $rental->status === 'rented')
                                             <span class="badge bg-success">Active</span>
                                         @elseif($rental->status === 'completed')
                                             <span class="badge bg-info">Completed</span>
@@ -467,7 +543,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if($rental->status === 'active')
+                                        @if($rental->status === 'active' || $rental->status === 'rented')
                                             <a href="{{ route('tracking.bike', $rental) }}" class="btn btn-sm btn-info">Track</a>
                                             <form action="{{ route('user.bike-rentals.return', $rental) }}" method="POST" class="d-inline">
                                                 @csrf
@@ -479,6 +555,11 @@
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Cancel this rental?')">Cancel</button>
                                             </form>
+                                        @endif
+                                        @if($rental->late_fee > 0 && !$rental->late_fee_paid && $rental->status === 'completed')
+                                            <a href="{{ route('rentals.pay-late-fee', $rental) }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-credit-card me-1"></i> Pay Late Fee
+                                            </a>
                                         @endif
                                     </td>
                                 </tr>
@@ -516,5 +597,72 @@
             else if (section === 'bike-rentals') document.getElementById('bikeRentalsSection').style.display = 'block';
         });
     });
+
+    // ─── RENTAL TIMER (active rental only) ───
+    @if($activeRental)
+    (function() {
+        const rental = @json($activeRental);
+        if (!rental) return;
+
+        const startTime = new Date(rental.start_time).getTime();
+        const expectedReturn = new Date(rental.expected_return_time).getTime();
+        const ratePerHour = parseFloat(rental.bike.price_per_hour) || 0;
+        const overtimeRate = ratePerHour * 1.5;
+        const baseFee = parseFloat(rental.base_fee) || parseFloat(rental.total_amount) || 0;
+
+        const timerDisplay = document.getElementById('timerDisplay');
+        const baseFeeDisplay = document.getElementById('baseFeeDisplay');
+        const overtimeFeeDisplay = document.getElementById('overtimeFeeDisplay');
+        const totalDueDisplay = document.getElementById('totalDueDisplay');
+        const returnBtn = document.getElementById('returnBtn');
+        const rentalStatus = document.getElementById('rentalStatus');
+
+        function formatTime(seconds) {
+            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const s = String(Math.floor(seconds % 60)).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function updateTimer() {
+            const now = Date.now();
+            const remaining = Math.max(0, (expectedReturn - now) / 1000); // seconds
+            const overtime = Math.max(0, (now - expectedReturn) / 1000); // seconds
+
+            let totalOvertimeFee = 0;
+            if (overtime > 0) {
+                const overtimeHours = overtime / 3600;
+                totalOvertimeFee = overtimeHours * overtimeRate;
+            }
+
+            // Display remaining or overtime
+            if (remaining > 0) {
+                timerDisplay.textContent = formatTime(remaining);
+                timerDisplay.style.color = '#28a745';
+            } else {
+                timerDisplay.textContent = '⏰ ' + formatTime(overtime);
+                timerDisplay.style.color = '#dc3545';
+            }
+
+            overtimeFeeDisplay.textContent = 'MWK ' + totalOvertimeFee.toFixed(0);
+            const totalDue = baseFee + totalOvertimeFee;
+            totalDueDisplay.textContent = 'MWK ' + totalDue.toFixed(0);
+        }
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+
+        // Show return button processing
+        document.getElementById('returnForm').addEventListener('submit', function() {
+            returnBtn.disabled = true;
+            returnBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processing...';
+        });
+
+        // If late fee already exists, show pay button
+        @if($activeRental->late_fee > 0 && !$activeRental->late_fee_paid)
+            document.getElementById('payLateFeeBtn').style.display = 'inline-block';
+        @endif
+    })();
+    @endif
 </script>
 @endsection

@@ -14,8 +14,8 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
-        // Get available rides (for display on dashboard)
+
+        // Available rides (for quick view)
         $availableRides = VehicleAdvertisement::with(['vehicle', 'owner'])
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
@@ -23,33 +23,36 @@ class DashboardController extends Controller
             ->orderBy('departure_time', 'asc')
             ->limit(3)
             ->get();
-        
-        // Get available bikes
+
+        // Available bikes
         $availableBikes = Bike::where('status', 'available')
             ->where('is_active', true)
             ->limit(4)
             ->get();
-        
-        // Get recent ride bookings
+
+        // User's recent ride bookings
         $recentBookings = Booking::with(['advertisement'])
             ->where('user_id', $user->id)
             ->latest()
             ->take(5)
             ->get();
-        
-        // Get recent bike rentals
+
+        // User's recent bike rentals
         $recentBikeRentals = BikeRental::with(['bike'])
             ->where('user_id', $user->id)
             ->latest()
             ->take(5)
             ->get();
-        
-        // Calculate totals
+
+        // Totals
         $totalTrips = Booking::where('user_id', $user->id)->count();
         $totalSpent = Booking::where('user_id', $user->id)
             ->where('status', 'completed')
             ->sum('total_price');
-        
+
+        // If you need locations in the dashboard, you can add:
+         $locations = Location::orderBy('name')->get();
+
         return view('user.dashboard', compact(
             'availableRides',
             'availableBikes',

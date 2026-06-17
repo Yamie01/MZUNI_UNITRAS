@@ -99,6 +99,8 @@ class Booking extends Model
         'is_paid' => false,
     ];
 
+    public function fromLocation() { return $this->belongsTo(Location::class, 'from_location_id'); }
+    public function toLocation()   { return $this->belongsTo(Location::class, 'to_location_id'); }
     /*
     |--------------------------------------------------------------------------
     | Relationships

@@ -16,7 +16,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* Your existing styles remain unchanged */
         :root {
             --primary: #00529b;
             --primary-dark: #003f75;
@@ -195,7 +194,7 @@
             gap: 10px;
             align-items: center;
         }
-        .location-input-group input {
+        .location-input-group select {
             flex: 1;
         }
         .btn-geolocate {
@@ -280,18 +279,23 @@
                     <div class="mb-3">
                         <label class="form-label text-muted small">From (pickup)</label>
                         <div class="location-input-group">
-                            <input type="text" id="searchFrom" class="form-control" list="locationList" placeholder="Type or select location" autocomplete="off">
+                            <select id="searchFrom" class="form-select">
+                                <option value="">Select pickup location</option>
+                                @foreach($locations as $location)
+                                    <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                @endforeach
+                            </select>
                             <button id="geolocateBtn" class="btn-geolocate" title="Use my current location"><i class="fas fa-location-dot"></i></button>
                         </div>
-                        <datalist id="locationList">
-                            @foreach($locations as $location)
-                                <option value="{{ $location }}">
-                            @endforeach
-                        </datalist>
                     </div>
                     <div class="mb-3" id="toFieldWrapper">
                         <label class="form-label text-muted small">To (destination)</label>
-                        <input type="text" id="searchTo" class="form-control" list="locationList" placeholder="Type or select destination" autocomplete="off">
+                        <select id="searchTo" class="form-select">
+                            <option value="">Select destination</option>
+                            @foreach($locations as $location)
+                                <option value="{{ $location->id }}">{{ $location->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="mb-3" id="bikeTypeWrapper" style="display: none;">
                         <label class="form-label text-muted small">Bike type</label>
@@ -314,7 +318,7 @@
     </div>
 </section>
 
-<!-- Services Section (with data-ride-id and data-bike-id) -->
+<!-- Services Section -->
 <section id="services" class="py-5">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -332,14 +336,14 @@
             </div>
         </div>
 
-        <!-- Carpool Panel (rides) -->
+        <!-- Carpool Panel -->
         <div id="carpoolPanel">
             <div class="row g-4" id="ridesList">
                 @forelse($availableVehicles as $ride)
                     <div class="col-lg-4 col-md-6 ride-item" 
                          data-ride-id="{{ $ride->id }}"
-                         data-from="{{ strtolower($ride->from_location) }}" 
-                         data-to="{{ strtolower($ride->to_location) }}" 
+                         data-from-id="{{ $ride->from_location_id }}"
+                         data-to-id="{{ $ride->to_location_id }}"
                          data-date="{{ \Carbon\Carbon::parse($ride->departure_time)->format('Y-m-d') }}"
                          data-price="{{ $ride->price }}">
                         <div class="ride-card">
@@ -349,7 +353,11 @@
                                     <span class="badge bg-primary-light text-primary">{{ ucfirst(str_replace('_', ' ', $ride->ad_type)) }}</span>
                                     <span class="price">MWK {{ number_format($ride->price, 0) }}</span>
                                 </div>
-                                <h5 class="fw-bold mt-2">{{ $ride->from_location }} → {{ $ride->to_location }}</h5>
+                                <h5 class="fw-bold mt-2">
+                                    {{ $ride->fromLocation ? $ride->fromLocation->name : $ride->from_location }} 
+                                    → 
+                                    {{ $ride->toLocation ? $ride->toLocation->name : $ride->to_location }}
+                                </h5>
                                 <div class="text-muted small">
                                     <i class="far fa-calendar-alt"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
                                     <span class="ms-2"><i class="fas fa-users"></i> {{ $ride->available_seats }} seats</span>
@@ -375,7 +383,7 @@
                 @forelse($availableBikes as $bike)
                     <div class="col-lg-3 col-md-6 bike-item" 
                          data-bike-id="{{ $bike->id }}"
-                         data-location="{{ strtolower($bike->pickup_location ?? $bike->location ?? 'campus') }}" 
+                         data-location-id="{{ $bike->location_id }}"
                          data-type="{{ strtolower($bike->type) }}">
                         <div class="bike-card">
                             <div class="card-img"><i class="fas fa-bicycle fa-3x text-primary"></i></div>
@@ -496,7 +504,42 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // ---------- LEAFET MAP (unchanged) ----------
+    // ---------- LOCATION MAPPING ----------
+    // Build a map of location name -> ID from the dropdowns.
+    function buildLocationMap() {
+        const map = {};
+        document.querySelectorAll('#searchFrom option, #searchTo option').forEach(opt => {
+            if (opt.value) {
+                map[opt.textContent.trim().toLowerCase()] = opt.value;
+            }
+        });
+        return map;
+    }
+    const locationNameToId = buildLocationMap();
+
+    function setSelectValue(selectId, locationName) {
+        const select = document.getElementById(selectId);
+        const normalized = locationName.trim().toLowerCase();
+        if (locationNameToId[normalized]) {
+            select.value = locationNameToId[normalized];
+        } else {
+            // Try partial match
+            let found = false;
+            for (const [name, id] of Object.entries(locationNameToId)) {
+                if (name.includes(normalized) || normalized.includes(name)) {
+                    select.value = id;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                select.value = '';
+                alert('Location "' + locationName + '" not in our list. Please select from dropdown.');
+            }
+        }
+    }
+
+    // ---------- LEAFET MAP ----------
     const map = L.map('map').setView([-11.45, 34.02], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
@@ -518,26 +561,11 @@
         }
     }
 
-    async function forwardGeocode(address, callback) {
-        if (!address.trim()) return callback(null, null);
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-            const data = await res.json();
-            if (data.length > 0) {
-                callback(parseFloat(data[0].lat), parseFloat(data[0].lon));
-            } else {
-                callback(null, null);
-            }
-        } catch {
-            callback(null, null);
-        }
-    }
-
     function setFromLocation(lat, lng, name) {
         fromLatLng = { lat, lng };
         if (fromMarker) map.removeLayer(fromMarker);
         fromMarker = L.marker([lat, lng]).addTo(map).bindPopup('Pickup').openPopup();
-        document.getElementById('searchFrom').value = name;
+        setSelectValue('searchFrom', name);
         drawPolyline();
         setTimeout(() => filterBySearch(), 100);
     }
@@ -546,7 +574,7 @@
         toLatLng = { lat, lng };
         if (toMarker) map.removeLayer(toMarker);
         toMarker = L.marker([lat, lng]).addTo(map).bindPopup('Destination').openPopup();
-        document.getElementById('searchTo').value = name;
+        setSelectValue('searchTo', name);
         drawPolyline();
         setTimeout(() => filterBySearch(), 100);
     }
@@ -600,23 +628,7 @@
         }, () => alert('Unable to retrieve your location.'));
     };
 
-    const fromInput = document.getElementById('searchFrom');
-    const toInput = document.getElementById('searchTo');
-
-    function onAddressSelect(input, setFunc) {
-        const address = input.value.trim();
-        if (!address) return;
-        forwardGeocode(address, (lat, lng) => {
-            if (lat && lng) {
-                setFunc(lat, lng, address);
-                map.setView([lat, lng], 15);
-            }
-        });
-    }
-
-    fromInput.addEventListener('change', () => onAddressSelect(fromInput, setFromLocation));
-    toInput.addEventListener('change', () => onAddressSelect(toInput, setToLocation));
-
+    // ---------- TAB SWITCHING ----------
     const tabCarpool = document.getElementById('tabCarpool');
     const tabBike = document.getElementById('tabBike');
     const carpoolPanel = document.getElementById('carpoolPanel');
@@ -649,19 +661,20 @@
     tabCarpool.addEventListener('click', () => switchTab('carpool'));
     tabBike.addEventListener('click', () => switchTab('bike'));
 
+    // ---------- FILTERING (by location IDs) ----------
     function filterRides() {
-        const fromVal = fromInput.value.trim().toLowerCase();
-        const toVal = toInput.value.trim().toLowerCase();
+        const fromId = document.getElementById('searchFrom').value;
+        const toId = document.getElementById('searchTo').value;
         const dateVal = searchDate.value;
         const rideItems = document.querySelectorAll('#ridesList .ride-item');
         let visibleCount = 0;
         rideItems.forEach(item => {
-            const fromAttr = (item.getAttribute('data-from') || '').toLowerCase();
-            const toAttr = (item.getAttribute('data-to') || '').toLowerCase();
+            const fromAttr = item.getAttribute('data-from-id') || '';
+            const toAttr = item.getAttribute('data-to-id') || '';
             const itemDate = item.getAttribute('data-date') || '';
             let show = true;
-            if (fromVal && !fromAttr.includes(fromVal)) show = false;
-            if (toVal && !toAttr.includes(toVal)) show = false;
+            if (fromId && fromAttr !== fromId) show = false;
+            if (toId && toAttr !== toId) show = false;
             if (dateVal && itemDate !== dateVal) show = false;
             item.style.display = show ? '' : 'none';
             if (show) visibleCount++;
@@ -670,15 +683,15 @@
     }
 
     function filterBikes() {
-        const locVal = fromInput.value.trim().toLowerCase();
+        const locId = document.getElementById('searchFrom').value;
         const typeVal = bikeTypeFilter.value.toLowerCase();
         const bikeItems = document.querySelectorAll('#bikesList .bike-item');
         let visibleCount = 0;
         bikeItems.forEach(item => {
-            const locationAttr = (item.getAttribute('data-location') || '').toLowerCase();
+            const locationAttr = item.getAttribute('data-location-id') || '';
             const bikeTypeAttr = (item.getAttribute('data-type') || '').toLowerCase();
             let show = true;
-            if (locVal && !locationAttr.includes(locVal)) show = false;
+            if (locId && locationAttr !== locId) show = false;
             if (typeVal && bikeTypeAttr !== typeVal) show = false;
             item.style.display = show ? '' : 'none';
             if (show) visibleCount++;
@@ -717,9 +730,10 @@
         filterBySearch();
     });
 
-    fromInput.addEventListener('change', filterBySearch);
-    toInput.addEventListener('change', () => { if (carpoolPanel.style.display !== 'none') filterRides(); });
-    searchDate.addEventListener('change', () => { if (carpoolPanel.style.display !== 'none') filterRides(); });
+    // Trigger filter when dropdowns change
+    document.getElementById('searchFrom').addEventListener('change', filterBySearch);
+    document.getElementById('searchTo').addEventListener('change', filterBySearch);
+    searchDate.addEventListener('change', filterBySearch);
     bikeTypeFilter.addEventListener('change', () => { if (bikePanel.style.display !== 'none') filterBikes(); });
 
     document.getElementById('navSearchIcon').addEventListener('click', function(e) {
@@ -727,18 +741,18 @@
         document.getElementById('searchCard').scrollIntoView({ behavior: 'smooth' });
     });
 
-    // ---------- GUEST ACTION HANDLER (REDIRECT TO LOGIN WITH RETURN URL) ----------
+    // ---------- GUEST / AUTH ACTION HANDLING ----------
     const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+
     function redirectToLoginWithReturn(targetUrl) {
-    if (targetUrl) {
-        // Direct redirect with query parameter (no sessionStorage)
-        window.location.href = "{{ route('login') }}?redirect_to=" + encodeURIComponent(targetUrl);
-    } else {
-        loginModal.show();
-    }
+        if (targetUrl) {
+            window.location.href = "{{ route('login') }}?redirect_to=" + encodeURIComponent(targetUrl);
+        } else {
+            loginModal.show();
+        }
     }
 
-    // For "Book ride" and "Rent now" buttons, redirect directly to login (no modal)
+    // For book/rent buttons – redirect to login with return URL if guest
     document.querySelectorAll('.book-action').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -751,63 +765,61 @@
                 const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
                 if (bikeId) targetUrl = "/bikes/" + bikeId + "/rent";
             }
-            redirectToLoginWithReturn(targetUrl);
+            @guest
+                redirectToLoginWithReturn(targetUrl);
+            @else
+                if (targetUrl) window.location.href = targetUrl;
+            @endguest
         });
     });
 
-    // For "Offer a ride" and "Share a ride" buttons, show the login modal
+    // For "Offer a ride" and "Share a ride" – show modal if guest
     document.querySelectorAll('#heroOfferBtn, #heroShareBtn, #tabOfferBtn, #tabShareBtn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
-            loginModal.show();
+            @guest
+                loginModal.show();
+            @else
+                // Redirect to appropriate page for logged-in users
+                if (this.id.includes('Offer') || this.id.includes('offer')) {
+                    window.location.href = "{{ route('rides.create') }}";
+                } else {
+                    window.location.href = "{{ route('rides.create') }}?type=share";
+                }
+            @endguest
         });
     });
 
-    // For entire card clicks: same logic
+    // Card clicks – same logic
     document.querySelectorAll('.ride-card, .bike-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (!e.target.closest('.book-action')) {
                 const rideItem = card.closest('.ride-item');
                 if (rideItem) {
                     const rideId = rideItem?.dataset?.rideId;
-                    if (rideId) redirectToLoginWithReturn("/book/" + rideId);
+                    if (rideId) {
+                        @guest
+                            redirectToLoginWithReturn("/book/" + rideId);
+                        @else
+                            window.location.href = "/book/" + rideId;
+                        @endguest
+                    }
                 } else {
                     const bikeId = card.closest('.bike-item')?.dataset?.bikeId;
-                    if (bikeId) redirectToLoginWithReturn("/bikes/" + bikeId + "/rent");
+                    if (bikeId) {
+                        @guest
+                            redirectToLoginWithReturn("/bikes/" + bikeId + "/rent");
+                        @else
+                            window.location.href = "/bikes/" + bikeId + "/rent";
+                        @endguest
+                    }
                 }
             }
         });
     });
 
-    @auth
-    // For logged‑in users, redirect directly (no modal, no login redirect)
-    document.querySelectorAll('.book-action').forEach(btn => {
-        btn.removeEventListener('click', redirectToLoginWithReturn);
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const type = this.getAttribute('data-type');
-            if (type === 'ride') {
-                const rideId = this.closest('.ride-item')?.dataset?.rideId;
-                if (rideId) window.location.href = "/book/" + rideId;
-            } else if (type === 'bike') {
-                const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
-                if (bikeId) window.location.href = "/bikes/" + bikeId + "/rent";
-            }
-        });
-    });
-    document.querySelectorAll('.ride-card, .bike-card').forEach(card => {
-        card.addEventListener('click', function(e) {
-            if (!e.target.closest('.book-action')) {
-                const rideId = this.closest('.ride-item')?.dataset?.rideId;
-                if (rideId) window.location.href = "/book/" + rideId;
-                else {
-                    const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
-                    if (bikeId) window.location.href = "/bikes/" + bikeId + "/rent";
-                }
-            }
-        });
-    });
-    @endauth
+    // Initial filter on page load
+    setTimeout(filterBySearch, 500);
 </script>
 </body>
 </html>
