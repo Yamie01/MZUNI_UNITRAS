@@ -13,7 +13,9 @@ class BikeRental extends Model
         'pickup_latitude', 'pickup_longitude', 'dropoff_location',
         'dropoff_latitude', 'dropoff_longitude', 'notes',
         'damage_report', 'damage_charge', 'refund_amount', 'actual_return_time',
-        'is_paid', 'payment_date'
+        'is_paid', 'payment_method', 'paid_at',
+        'late_fee',
+        'late_fee_paid',
     ];
 
     protected $casts = [
@@ -26,7 +28,9 @@ class BikeRental extends Model
         'deposit_paid' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'damage_charge' => 'decimal:2',
-        'refund_amount' => 'decimal:2'
+        'refund_amount' => 'decimal:2',
+        'late_fee' => 'decimal:2',
+        'late_fee_paid' => 'boolean'
     ];
 
     public function bike()

@@ -7,18 +7,23 @@ use App\Models\Booking;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAdvertisement;
+use App\Models\Location;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema; // optional, we'll skip bike locations safely
 
 class HomeController extends Controller
 {
     /**
-     * Show the welcome page with available vehicles, bikes, stats, and locations.
+     * Show the welcome page with available rides, bikes, stats, and locations.
      */
     public function index()
     {
-        // 1. Available rides
-        $availableVehicles = VehicleAdvertisement::with(['vehicle', 'owner'])
+        // 1. Available rides (with location relationships)
+        $availableVehicles = VehicleAdvertisement::with([
+            'vehicle',
+            'owner',
+            'fromLocation',
+            'toLocation'
+        ])
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
             ->where('available_seats', '>', 0)
@@ -39,32 +44,14 @@ class HomeController extends Controller
             'completed_trips'=> Booking::where('status', 'completed')->count(),
         ];
 
-        // 4. Collect unique locations for autocomplete (only from rides for now)
-        //    This avoids the 'pickup_location' column error.
-        $rideFromLocations = VehicleAdvertisement::where('status', 'approved')
-            ->where('departure_time', '>', now())
-            ->pluck('from_location')
-            ->unique()
-            ->values()
-            ->toArray();
+        // 4. Locations for dropdowns (from the database)
+        $locations = Location::orderBy('name')->get();
 
-        $rideToLocations = VehicleAdvertisement::where('status', 'approved')
-            ->where('departure_time', '>', now())
-            ->pluck('to_location')
-            ->unique()
-            ->values()
-            ->toArray();
-
-        // Merge both ride locations
-        $locations = array_unique(array_merge($rideFromLocations, $rideToLocations));
-        sort($locations);
-
-        // Single return with all variables
         return view('welcome', compact('availableVehicles', 'availableBikes', 'stats', 'locations'));
     }
 
     /**
-     * Show the dashboard based on user role.
+     * Redirect to the appropriate dashboard based on user role.
      */
     public function dashboard()
     {
@@ -86,20 +73,26 @@ class HomeController extends Controller
     }
 
     /**
-     * Search for rides.
+     * Search for rides (supports location IDs and text fallback).
      */
     public function search(Request $request)
     {
-        $query = VehicleAdvertisement::with(['vehicle', 'owner'])
+        $query = VehicleAdvertisement::with(['vehicle', 'owner', 'fromLocation', 'toLocation'])
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
             ->where('available_seats', '>', 0);
 
-        if ($request->filled('from')) {
+        // Search by location IDs (if provided)
+        if ($request->filled('from_location_id')) {
+            $query->where('from_location_id', $request->from_location_id);
+        } elseif ($request->filled('from')) {
+            // Fallback to text search
             $query->where('from_location', 'like', '%' . $request->from . '%');
         }
 
-        if ($request->filled('to')) {
+        if ($request->filled('to_location_id')) {
+            $query->where('to_location_id', $request->to_location_id);
+        } elseif ($request->filled('to')) {
             $query->where('to_location', 'like', '%' . $request->to . '%');
         }
 

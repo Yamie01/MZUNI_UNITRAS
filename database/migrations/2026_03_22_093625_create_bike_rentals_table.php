@@ -36,6 +36,9 @@ return new class extends Migration
             $table->boolean('is_paid')->default(false);
             $table->timestamp('payment_date')->nullable();
             $table->timestamps();
+            $table->boolean('is_paid')->default(false);
+            $table->string('payment_method')->nullable();
+            $table->timestamp('paid_at')->nullable();
             
             $table->index('rental_code');
             $table->index('status');

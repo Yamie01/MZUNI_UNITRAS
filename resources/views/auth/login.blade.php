@@ -102,7 +102,7 @@
 
                 <div class="register-link">
                     Don't have an account? 
-                    <a href="{{ route('register') }}@if(request()->has('redirect_to'))?redirect_to={{ request()->query('redirect_to') }}@endif">
+                    <a href="{{ route('register') }}@if($redirectTo)?redirect_to={{ $redirectTo }}@endif">
                         Create account
                     </a>
                 </div>

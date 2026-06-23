@@ -50,11 +50,19 @@ class RegisterController extends Controller
             'status' => 'active',
         ]);
 
-        // Fire registered event (optional, for email verification)
+        // Fire registered event
         event(new Registered($user));
 
         // Log the user in
         Auth::login($user);
+
+        // ✅ Get redirect_to from session or request
+        $redirectTo = session('url.intended') ?? $request->input('redirect_to');
+
+        if ($redirectTo && $redirectTo !== '') {
+            session()->forget('url.intended');
+            return redirect($redirectTo);
+        }
 
         // Redirect based on user type
         return $this->redirectBasedOnUserType($user);
@@ -64,13 +72,13 @@ class RegisterController extends Controller
      * Redirect users based on their type.
      */
     protected function redirectBasedOnUserType($user)
-{
-    if ($user->user_type === 'admin') {
-        return redirect()->route('admin.dashboard');
+    {
+        if ($user->user_type === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($user->user_type === 'vehicle_owner') {
+            return redirect()->route('vehicle-owner.dashboard');
+        }
+        return redirect()->route('dashboard');
     }
-    if ($user->user_type === 'vehicle_owner') {
-        return redirect()->route('vehicle-owner.dashboard');
-    }
-    return redirect()->route('dashboard');
-}
 }

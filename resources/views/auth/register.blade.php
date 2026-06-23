@@ -297,9 +297,9 @@
 
                 <button type="submit" class="btn-register">Create account</button>
 
-               <div class="login-link">
+                <div class="login-link">
                     Already have an account? 
-                    <a href="{{ route('login') }}@if(request()->has('redirect_to'))?redirect_to={{ request()->query('redirect_to') }}@endif">
+                    <a href="{{ route('login') }}@if($redirectTo)?redirect_to={{ $redirectTo }}@endif">
                         Sign in
                     </a>
                 </div>

@@ -2,13 +2,19 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+
+// Controllers
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\TrackingController;
+use App\Http\Controllers\OfferRideController;
+use App\Http\Controllers\BecomeVehicleOwnerController;
+
+// Middleware
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\VehicleOwnerMiddleware;
-use App\Http\Controllers\TrackingController;
 
 // Admin Controllers
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -18,6 +24,7 @@ use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Admin\BikeController as AdminBikeController;
 use App\Http\Controllers\Admin\BikeRentalController as AdminBikeRentalController;
+use App\Http\Controllers\Admin\TrackingController as AdminTrackingController;
 
 // Vehicle Owner Controllers
 use App\Http\Controllers\VehicleOwner\DashboardController as OwnerDashboardController;
@@ -40,185 +47,203 @@ use App\Http\Controllers\User\BikeRentalPaymentController;
 */
 
 // ================================
-// PUBLIC ROUTES (no auth required)
+// 1. PUBLIC WEBHOOK – NO CSRF, NO AUTH
+// ================================
+Route::post('/api/bike-rental/webhook', [PaymentController::class, 'handleWebhook'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('api.bike-rental.webhook');
+
+// ================================
+// 2. PUBLIC ROUTES
 // ================================
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/search', [HomeController::class, 'search'])->name('search');
 
-// Authentication routes (Breeze)
+// Authentication (Breeze)
 require __DIR__.'/auth.php';
 
 // ================================
-// PAYMENT CALLBACK & WEBHOOK (public)
+// 3. PAYMENT CALLBACKS (public)
 // ================================
 Route::prefix('payment')->name('payment.')->group(function () {
     Route::get('/return', [PaymentController::class, 'handleReturn'])->name('return');
     Route::get('/cancel', [PaymentController::class, 'handleCancel'])->name('cancel');
-    Route::post('/webhook', [PaymentController::class, 'handleWebhook'])->name('webhook');
-    Route::post('/manual-verify', [PaymentController::class, 'manualVerify'])->name('manual-verify')->middleware('auth');
 });
 
-// Bike rental webhook (public)
-Route::post('/bike-rental/webhook', [BikeRentalPaymentController::class, 'handleWebhook'])->name('user.bike-rentals.webhook');
-Route::get('/bike-rental/payment/return', [BikeRentalPaymentController::class, 'handleReturn'])->name('user.bike-rentals.payment.return');
+Route::get('/bike-rental/payment/return', [BikeRentalPaymentController::class, 'handleReturn'])
+    ->name('user.bike-rentals.payment.return');
 
-// Store redirect helper for login/register
+Route::get('/subscription/callback', [SubscriptionController::class, 'callback'])->name('subscription.callback');
+
 Route::post('/store-redirect', function (Request $request) {
     session(['url.intended' => $request->redirect_to]);
     return response()->json(['success' => true]);
 })->name('store.redirect');
 
 // ================================
-// SUBSCRIPTION ROUTES (callback is public, others require auth)
-// ================================
-Route::get('/subscription/callback', [SubscriptionController::class, 'callback'])->name('subscription.callback');
-
-Route::middleware('auth')->group(function () {
-    Route::prefix('subscription')->name('subscription.')->group(function () {
-        Route::get('/', [SubscriptionController::class, 'index'])->name('index');
-        Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe');
-        Route::post('/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
-    });
-});
-
-// ================================
-// AUTHENTICATED USER ROUTES
+// 4. AUTHENTICATED USER ROUTES
 // ================================
 Route::middleware('auth')->group(function () {
-    // Dashboard
+
+    // Dashboard & Profile
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
-    
-    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // ------------------------------
-    // RIDE BOOKING ROUTES
+    // OFFER RIDE FLOW
+    // ------------------------------
+    Route::get('/offer-ride', [OfferRideController::class, 'index'])->name('offer.ride');
+    Route::get('/become-vehicle-owner', [BecomeVehicleOwnerController::class, 'create'])->name('become.vehicle.owner');
+    Route::post('/become-vehicle-owner', [BecomeVehicleOwnerController::class, 'store'])->name('become.vehicle.owner.store');
+
+    // ------------------------------
+    // RIDE BOOKING
     // ------------------------------
     Route::get('/book/{advertisement}', [UserBookingController::class, 'create'])->name('user.bookings.create');
     Route::post('/book/{advertisement}', [UserBookingController::class, 'store'])->name('user.bookings.store');
-    
+
     Route::prefix('bookings')->name('user.bookings.')->group(function () {
         Route::get('/', [UserBookingController::class, 'index'])->name('index');
         Route::get('/{booking}', [UserBookingController::class, 'show'])->name('show');
         Route::post('/{booking}/cancel', [UserBookingController::class, 'cancel'])->name('cancel');
         Route::get('/{booking}/payment', [UserBookingController::class, 'payment'])->name('payment');
         Route::post('/{booking}/payment', [UserBookingController::class, 'processPayment'])->name('process-payment');
+        Route::match(['GET', 'POST'], '/{booking}/pay', [UserBookingController::class, 'initiatePayment'])->name('payment.initiate');
     });
-    
-    Route::get('/booking/check-subscription/{advertisement}', [UserBookingController::class, 'checkSubscriptionEligibility'])->name('user.bookings.check-subscription');
-    
-    // Initiate payment for a booking
+
+    Route::get('/booking/check-subscription/{advertisement}', [UserBookingController::class, 'checkSubscriptionEligibility'])
+        ->name('user.bookings.check-subscription');
+
+    // Trip management (user)
+    Route::post('/bookings/{booking}/start-trip', [UserBookingController::class, 'startTrip'])->name('user.bookings.start-trip');
+    Route::post('/bookings/{booking}/complete-trip', [UserBookingController::class, 'completeTrip'])->name('user.bookings.complete-trip');
+
+    // Alternative payment initiation (legacy)
     Route::get('/payment/{booking}', [PaymentController::class, 'initiate'])->name('payment.initiate');
-    
+
+    // Manual verification
+    Route::post('/payment/manual-verify-booking', [PaymentController::class, 'manualVerifyBooking'])
+        ->name('payment.manual-verify-booking');
+    Route::post('/payment/manual-verify', [PaymentController::class, 'manualVerify'])
+        ->name('payment.manual-verify');
+
     // ------------------------------
-    // BIKE RENTAL ROUTES
+    // BIKE RENTAL
     // ------------------------------
     Route::prefix('bikes')->name('user.bikes.')->group(function () {
         Route::get('/', [BikeController::class, 'index'])->name('index');
         Route::get('/{bike}', [BikeController::class, 'show'])->name('show');
         Route::get('/{bike}/rent', [BikeRentalController::class, 'rent'])->name('rent');
-        Route::post('/{bike}/rent', [BikeRentalController::class, 'processRent'])->name('process-rent');
+        Route::post('/{bike}/rent', [BikeRentalController::class, 'processRent'])->name('rent.process');
     });
-    
+
     Route::prefix('bike-rentals')->name('user.bike-rentals.')->group(function () {
         Route::get('/', [BikeRentalController::class, 'index'])->name('index');
         Route::get('/{rental}', [BikeRentalController::class, 'show'])->name('show');
         Route::post('/{rental}/cancel', [BikeRentalController::class, 'cancel'])->name('cancel');
         Route::post('/{rental}/return', [BikeRentalController::class, 'returnBike'])->name('return');
-        
-        // Rental payment
+
+        // Payment routes
         Route::get('/{rental}/payment', [BikeRentalPaymentController::class, 'create'])->name('payment');
         Route::post('/{rental}/pay', [BikeRentalPaymentController::class, 'initiate'])->name('payment.initiate');
-        Route::get('/payment/callback', [BikeRentalPaymentController::class, 'paymentCallback'])->name('payment.callback');
+        Route::get('/payment/return', [BikeRentalPaymentController::class, 'handleReturn'])->name('payment.return');
+        Route::match(['GET', 'POST'], '/payment/webhook', [BikeRentalPaymentController::class, 'handleWebhook'])->name('payment.webhook');
         Route::get('/{rental}/payment-status', [BikeRentalPaymentController::class, 'paymentStatus'])->name('payment.status');
         Route::get('/{rental}/check-status', [BikeRentalPaymentController::class, 'checkStatus'])->name('payment.check-status');
+
+        // Late fee routes
+        Route::get('/rentals/{rental}/pay-late-fee', [BikeRentalController::class, 'payLateFee'])->name('rentals.pay-late-fee');
+        Route::post('/rentals/{rental}/initiate-late-fee', [BikeRentalController::class, 'initiateLateFeePayment'])->name('rentals.initiate-late-fee');
+        Route::post('/rentals/late-fee-callback', [BikeRentalController::class, 'lateFeeCallback'])->name('rentals.late-fee-callback');
     });
-    
-    // Alternative rental payment initiation
-    Route::match(['GET', 'POST'], '/payment/rental/{rental}', [PaymentController::class, 'initiateRental'])->name('payment.initiateRental');
-    
+
+    // Alternative rental payment (legacy)
+    Route::match(['GET', 'POST'], '/payment/rental/{rental}', [PaymentController::class, 'initiateRental'])
+        ->name('payment.initiateRental');
+
     // ------------------------------
-    // TRACKING ROUTES
+    // SUBSCRIPTION
+    // ------------------------------
+    Route::prefix('subscription')->name('subscription.')->group(function () {
+        Route::get('/', [SubscriptionController::class, 'index'])->name('index');
+        Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscribe');
+        Route::post('/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('cancel');
+    });
+    Route::post('/subscription/manual-verify', [SubscriptionController::class, 'manualVerify'])
+        ->name('subscription.manual-verify');
+
+    // ------------------------------
+    // TRACKING
     // ------------------------------
     Route::get('/tracking/ride/{booking}', [TrackingController::class, 'showTracking'])->name('tracking.ride');
     Route::get('/tracking/bike/{rental}', [TrackingController::class, 'showBikeTracking'])->name('tracking.bike');
 
-    // Emergency force activate (admin only)
+    // Force activate (admin only)
     Route::post('/force-activate-rental/{rental}', function ($rentalId) {
         $rental = App\Models\BikeRental::find($rentalId);
         if (!$rental) return back()->with('error', 'Rental not found');
-        
-        $rental->update([
-            'is_paid' => true,
-            'status' => 'active',
-            'payment_date' => now(),
-        ]);
-        if ($rental->bike) {
-            $rental->bike->update(['status' => 'rented']);
-        }
+        $rental->update(['is_paid' => true, 'status' => 'active', 'payment_date' => now()]);
+        if ($rental->bike) $rental->bike->update(['status' => 'rented']);
         return back()->with('success', 'Rental activated!');
     })->name('force.activate.rental');
 });
 
 // ================================
-// VEHICLE OWNER ROUTES (auth + role)
+// 5. VEHICLE OWNER ROUTES
 // ================================
 Route::prefix('vehicle-owner')
     ->name('vehicle-owner.')
     ->middleware(['auth', VehicleOwnerMiddleware::class])
     ->group(function () {
         Route::get('/dashboard', [OwnerDashboardController::class, 'index'])->name('dashboard');
-        
-        // Vehicle management
         Route::resource('vehicles', VehicleController::class);
         Route::post('vehicles/{vehicle}/toggle-status', [VehicleController::class, 'toggleStatus'])->name('vehicles.toggle-status');
-        
-        // Advertisement management
         Route::resource('advertisements', AdvertisementController::class);
         Route::post('advertisements/{advertisement}/duplicate', [AdvertisementController::class, 'duplicate'])->name('advertisements.duplicate');
-        
-        // Booking management
+
+        // Trip management for ads (vehicle owner)
+        Route::post('/advertisements/{advertisement}/start-trip', [AdvertisementController::class, 'startTrip'])->name('advertisements.start-trip');
+        Route::post('/advertisements/{advertisement}/complete-trip', [AdvertisementController::class, 'completeTrip'])->name('advertisements.complete-trip');
+
         Route::prefix('bookings')->name('bookings.')->group(function () {
             Route::get('/', [OwnerBookingController::class, 'index'])->name('index');
             Route::get('/{booking}', [OwnerBookingController::class, 'show'])->name('show');
             Route::post('/{booking}', [OwnerBookingController::class, 'update'])->name('update');
             Route::post('/bulk-update', [OwnerBookingController::class, 'bulkUpdate'])->name('bulk-update');
         });
-        
-        // Trip management
+
+        // Trip management for bookings (vehicle owner)
         Route::post('/bookings/{booking}/start-trip', [OwnerBookingController::class, 'startTrip'])->name('bookings.start-trip');
         Route::post('/bookings/{booking}/complete-trip', [OwnerBookingController::class, 'completeTrip'])->name('bookings.complete-trip');
-        
-        // Earnings & withdrawals
+
         Route::get('/earnings', [EarningsController::class, 'index'])->name('earnings');
         Route::post('/withdraw', [EarningsController::class, 'withdraw'])->name('withdraw');
     });
 
 // ================================
-// ADMIN ROUTES (auth + admin role)
+// 6. ADMIN ROUTES
 // ================================
 Route::prefix('admin')
     ->name('admin.')
     ->middleware(['auth', AdminMiddleware::class])
     ->group(function () {
-        // Dashboard
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-        
-        // User management
+
+        // Users
         Route::resource('users', UserController::class)->except(['create', 'store']);
         Route::post('users/{user}/suspend', [UserController::class, 'suspend'])->name('users.suspend');
         Route::post('users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
         Route::get('users/export', [UserController::class, 'export'])->name('users.export');
-        
-        // Vehicle management
+
+        // Vehicles
         Route::resource('vehicles', AdminVehicleController::class)->only(['index', 'show', 'destroy']);
         Route::post('vehicles/{vehicle}/approve', [AdminVehicleController::class, 'approve'])->name('vehicles.approve');
         Route::post('vehicles/{vehicle}/reject', [AdminVehicleController::class, 'reject'])->name('vehicles.reject');
-        
-        // Advertisement management
+
+        // Advertisements
         Route::prefix('advertisements')->name('advertisements.')->group(function () {
             Route::get('/', [AdminAdController::class, 'index'])->name('index');
             Route::get('/{advertisement}', [AdminAdController::class, 'show'])->name('show');
@@ -227,44 +252,48 @@ Route::prefix('admin')
             Route::post('/{advertisement}/reject', [AdminAdController::class, 'reject'])->name('reject');
             Route::post('/bulk-approve', [AdminAdController::class, 'bulkApprove'])->name('bulk-approve');
         });
-        
-        // Booking management
+
+        // Bookings
         Route::prefix('bookings')->name('bookings.')->group(function () {
             Route::get('/', [AdminBookingController::class, 'index'])->name('index');
             Route::get('/{booking}', [AdminBookingController::class, 'show'])->name('show');
             Route::delete('/{booking}', [AdminBookingController::class, 'destroy'])->name('destroy');
             Route::get('/export', [AdminBookingController::class, 'export'])->name('export');
         });
-        
-        // Bike management
+
+        // Bikes
         Route::resource('bikes', AdminBikeController::class);
         Route::post('bikes/{bike}/update-status', [AdminBikeController::class, 'updateStatus'])->name('bikes.update-status');
         Route::post('bikes/{bike}/generate-qr', [AdminBikeController::class, 'generateQR'])->name('bikes.generate-qr');
-        
-        // Bike rentals management
+
+        // Bike Rentals
         Route::prefix('bike-rentals')->name('bike-rentals.')->group(function () {
             Route::get('/', [AdminBikeRentalController::class, 'index'])->name('index');
             Route::get('/{rental}', [AdminBikeRentalController::class, 'show'])->name('show');
             Route::post('/{rental}/complete', [AdminBikeRentalController::class, 'complete'])->name('complete');
             Route::post('/{rental}/cancel', [AdminBikeRentalController::class, 'cancel'])->name('cancel');
         });
-        
-        // Live tracking
-        Route::get('/live-tracking/bikes', [TrackingController::class, 'adminBikeTracking'])->name('live-tracking.bikes');
+
+        // Live Tracking
+        Route::get('/live-tracking/bikes', [AdminTrackingController::class, 'bikes'])->name('live-tracking.bikes');
         Route::get('/active-bike-rentals', [TrackingController::class, 'getActiveBikeRentals'])->name('active-bike-rentals');
     });
 
 // ================================
-// DEBUG ROUTES (local only)
+// 7. TEST & DEBUG ROUTES (local only)
 // ================================
+Route::get('/test-ngrok', function () {
+    return 'ngrok is working!';
+});
+
 if (app()->environment('local')) {
     Route::middleware('auth')->get('/debug-route', function() {
         return [
             'advertisements_create' => route('vehicle-owner.advertisements.create'),
-            'current_user_type' => auth()->user()->user_type ?? 'guest',
+            'current_user_type' => auth()->user()->user_type ?? 'guest'
         ];
     });
-    
+
     Route::get('/test-sms', function () {
         \App\Helpers\SmsHelper::send('0990179811', 'Test message from Mzuni UNITRAS!');
         return 'SMS sent! Check your phone.';

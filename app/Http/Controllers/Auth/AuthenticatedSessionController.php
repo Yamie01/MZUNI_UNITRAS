@@ -28,13 +28,14 @@ class AuthenticatedSessionController extends Controller
             return back()->withErrors(['email' => 'Your account is not active. Please contact the administrator.']);
         }
 
-        // ✅ Get redirect_to from the form submission (NOT from query string)
-        $redirectTo = $request->input('redirect_to');
+        // ✅ Get redirect_to from: session → request input → default
+        $redirectTo = session('url.intended') ?? $request->input('redirect_to');
         
         Log::info('Login - redirect_to value', ['redirect_to' => $redirectTo]);
 
         // ✅ If redirect_to exists, go there immediately
         if ($redirectTo && $redirectTo !== '') {
+            session()->forget('url.intended');
             return redirect($redirectTo);
         }
 

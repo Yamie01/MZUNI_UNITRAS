@@ -4,11 +4,15 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\VehicleAdvertisement;
+use App\Models\Location;
 use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionUsage;
+use App\Models\VehicleAdvertisement;
 use App\Services\PayChanguService;
+use App\Services\PaymentService;
+use App\Services\RevenueService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,56 +20,72 @@ use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
+    protected $paymentService;
+    protected $revenueService;
     protected $paychangu;
 
-    public function __construct(PayChanguService $paychangu)
+    public function __construct(PaymentService $paymentService, RevenueService $revenueService, PayChanguService $paychangu)
     {
+        $this->paymentService = $paymentService;
+        $this->revenueService = $revenueService;
         $this->paychangu = $paychangu;
-        $this->middleware('auth');
     }
 
-    /**
-     * Display a listing of user's bookings.
-     */
-    public function index()
-    {
-        $bookings = Booking::with(['advertisement', 'vehicle', 'payment'])
-            ->where('user_id', Auth::id())
-            ->latest()
-            ->paginate(10);
-        
-        return view('user.bookings.index', compact('bookings'));
-    }
+    // ============================================================
+    // 1. CREATE & STORE (Booking Form + Submission)
+    // ============================================================
 
     /**
-     * Show the form for creating a new booking.
+     * Show the booking form for a specific advertisement.
      */
     public function create(VehicleAdvertisement $advertisement)
     {
-        // Check if advertisement is still available
-        if ($advertisement->status !== 'approved' || 
-            $advertisement->departure_time < now() || 
+        if ($advertisement->status !== 'approved' ||
+            $advertisement->departure_time < now() ||
             $advertisement->available_seats < 1) {
             return redirect()->route('search')
                 ->with('error', 'This ride is no longer available.');
         }
 
-        return view('user.bookings.create', compact('advertisement'));
+        $locations = Location::orderBy('name')->get();
+        $subscription = Subscription::where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->where('end_date', '>', now())
+            ->first();
+
+        return view('user.bookings.create', compact('advertisement', 'locations', 'subscription'));
     }
 
     /**
-     * Store a newly created booking (with subscription support).
+     * Store a newly created booking.
      */
     public function store(Request $request, VehicleAdvertisement $advertisement)
     {
+        $user = auth()->user();
+
+        // Block if user has unpaid late fee
+        if ($user->hasUnpaidLateFee()) {
+            return back()->with('error', 'You have an unpaid late fee. Please pay it before booking another ride.');
+        }
+
+        // Validate with location IDs
         $request->validate([
-            'seats' => 'required|integer|min:1|max:' . $advertisement->available_seats,
-            'pickup_point' => 'required|string',
-            'dropoff_point' => 'required|string',
-            'special_requests' => 'nullable|string',
+            'seats'             => 'required|integer|min:1|max:' . $advertisement->available_seats,
+            'from_location_id'  => 'required|exists:locations,id',
+            'to_location_id'    => 'required|exists:locations,id',
+            'special_requests'  => 'nullable|string',
+            'departure_date'    => 'nullable|date',
+            'departure_time'    => 'nullable|date_format:H:i',
         ]);
 
-        // Check if user has an active subscription
+        // Get location names from IDs
+        $fromLocation = Location::find($request->from_location_id);
+        $toLocation   = Location::find($request->to_location_id);
+
+        $pickup   = $fromLocation ? $fromLocation->name : '';
+        $dropoff  = $toLocation ? $toLocation->name : '';
+
+        // Check subscription
         $subscription = Subscription::where('user_id', Auth::id())
             ->where('status', 'active')
             ->where('end_date', '>', now())
@@ -76,47 +96,52 @@ class BookingController extends Controller
         $bookingType = 'paid';
 
         if ($subscription && $subscription->canBookRide()) {
-            // ✅ Use subscription (FREE booking)
             $isSubscriptionBooking = true;
             $totalPrice = 0;
             $bookingType = 'subscription';
         } else {
-            // ❌ No active subscription or limit exceeded → paid booking
             $totalPrice = $advertisement->price * $request->seats;
             $bookingType = 'paid';
         }
 
-        DB::transaction(function () use ($request, $advertisement, $totalPrice, $bookingType, $isSubscriptionBooking, $subscription, &$booking) {
+        // Combine date & time if provided
+        $departureDateTime = $advertisement->departure_time;
+        if ($request->filled('departure_date') && $request->filled('departure_time')) {
+            $departureDateTime = Carbon::parse($request->departure_date . ' ' . $request->departure_time);
+        }
+
+        DB::transaction(function () use ($request, $advertisement, $totalPrice, $bookingType, $isSubscriptionBooking, $subscription, $pickup, $dropoff, $departureDateTime, &$booking) {
             $booking = Booking::create([
-                'booking_reference' => 'BK-' . strtoupper(uniqid()),
-                'user_id' => Auth::id(),
+                'booking_reference'       => 'BK-' . strtoupper(uniqid()),
+                'user_id'                 => Auth::id(),
                 'vehicle_advertisement_id' => $advertisement->id,
-                'vehicle_id' => $advertisement->vehicle_id,
-                'number_of_seats' => $request->seats,
-                'price_per_seat' => $advertisement->price,
-                'subtotal' => $totalPrice,
-                'total_price' => $totalPrice,
-                'platform_fee' => $totalPrice * 0.20,
-                'owner_earnings' => $totalPrice * 0.80,
-                'is_paid' => $isSubscriptionBooking,
-                'status' => $isSubscriptionBooking ? 'confirmed' : 'pending',
-                'pickup_point' => $request->pickup_point,
-                'dropoff_point' => $request->dropoff_point,
-                'special_requests' => $request->special_requests,
-                'booking_time' => now(),
-                'trip_status' => 'pending',
-                'booking_type' => $bookingType,
+                'vehicle_id'              => $advertisement->vehicle_id,
+                'number_of_seats'         => $request->seats,
+                'price_per_seat'          => $advertisement->price,
+                'subtotal'                => $totalPrice,
+                'total_price'             => $totalPrice,
+                'platform_fee'            => $totalPrice * 0.20,
+                'owner_earnings'          => $totalPrice * 0.80,
+                'is_paid'                 => $isSubscriptionBooking,
+                'status'                  => $isSubscriptionBooking ? 'confirmed' : 'pending',
+                'pickup_point'            => $pickup,
+                'dropoff_point'           => $dropoff,
+                'special_requests'        => $request->special_requests,
+                'booking_time'            => now(),
+                'trip_status'             => 'pending',
+                'booking_type'            => $bookingType,
+                'trip_date'               => $departureDateTime,
             ]);
 
-            // Reduce available seats
+            // Decrease available seats
             $advertisement->decrement('available_seats', $request->seats);
 
             // Record subscription usage if applicable
             if ($isSubscriptionBooking && $subscription) {
                 SubscriptionUsage::create([
                     'subscription_id' => $subscription->id,
-                    'booking_id' => $booking->id,
-                    'usage_date' => now(),
+                    'booking_id'      => $booking->id,
+                    'usage_date'      => now(),
                 ]);
             }
         });
@@ -127,9 +152,26 @@ class BookingController extends Controller
                 ->with('success', "✅ Booking confirmed using your {$subscription->type} pass! You have {$remainingToday} free ride(s) left today.");
         }
 
-        // For paid bookings, redirect to payment
+        // Redirect to payment page
         return redirect()->route('user.bookings.payment', $booking)
             ->with('info', 'Please complete payment to confirm your booking.');
+    }
+
+    // ============================================================
+    // 2. DISPLAY BOOKINGS
+    // ============================================================
+
+    /**
+     * Display a listing of user's bookings.
+     */
+    public function index()
+    {
+        $bookings = Booking::with(['advertisement', 'vehicle', 'payment'])
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->paginate(10);
+
+        return view('user.bookings.index', compact('bookings'));
     }
 
     /**
@@ -140,34 +182,28 @@ class BookingController extends Controller
         if ($booking->user_id !== Auth::id()) {
             abort(403);
         }
-        
+
         $booking->load(['advertisement', 'vehicle', 'payment']);
-        
+
         return view('user.bookings.show', compact('booking'));
     }
 
     /**
-     * Cancel the specified booking.
+     * Display user's bookings (legacy method).
      */
-    public function cancel(Booking $booking)
+    public function myBookings()
     {
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-        
-        if (!in_array($booking->status, ['pending', 'confirmed'])) {
-            return back()->with('error', 'This booking cannot be cancelled.');
-        }
-        
-        DB::transaction(function () use ($booking) {
-            // Restore seats
-            $booking->advertisement->increment('available_seats', $booking->number_of_seats);
-            $booking->update(['status' => 'cancelled']);
-        });
-        
-        return redirect()->route('user.bookings.index')
-            ->with('success', 'Booking cancelled successfully.');
+        $bookings = Auth::user()->bookings()
+            ->with(['advertisement', 'vehicle', 'payment'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('bookings.my-bookings', compact('bookings'));
     }
+
+    // ============================================================
+    // 3. PAYMENT
+    // ============================================================
 
     /**
      * Show payment page for booking.
@@ -177,182 +213,236 @@ class BookingController extends Controller
         if ($booking->user_id !== Auth::id()) {
             abort(403);
         }
-        
+
         if ($booking->status !== 'pending') {
             return redirect()->route('user.bookings.index')
                 ->with('error', 'This booking cannot be paid for.');
         }
-        
+
         return view('user.bookings.payment', compact('booking'));
     }
 
     /**
-     * Initialize PayChangu payment for ride booking.
+     * Process payment (redirect to PayChangu).
+     */
+    public function processPayment(Request $request, Booking $booking)
+    {
+        if ($booking->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($booking->status !== 'pending') {
+            return redirect()->route('user.bookings.index')
+                ->with('error', 'This booking cannot be paid for.');
+        }
+
+        // Delegate to PaymentController
+        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
+    }
+
+    /**
+     * Initiate PayChangu payment.
      */
     public function initiatePayment(Booking $booking)
     {
         if ($booking->user_id !== Auth::id()) {
             abort(403);
         }
-        
+
         if ($booking->status !== 'pending') {
             return redirect()->route('user.bookings.index')
                 ->with('error', 'This booking cannot be paid for.');
         }
-        
-        // Create unique transaction reference
-        $txRef = 'RIDE-' . $booking->id . '-' . time();
-        
-        // Prepare payment data
-        $paymentData = [
-            'amount' => (float) $booking->total_price,
-            'currency' => 'MWK',
-            'email' => auth()->user()->email,
-            'first_name' => auth()->user()->name,
-            'last_name' => '',
-            'callback_url' => route('payment.webhook'),
-            'return_url' => route('payment.return'),
-            'tx_ref' => $txRef,
-            'customization' => [
-                'title' => 'Mzuni UNITRAS - Ride Booking',
-                'description' => "Booking #{$booking->booking_reference} - {$booking->advertisement->from_location} to {$booking->advertisement->to_location}",
-            ],
-            'meta' => [
-                'booking_id' => $booking->id,
-                'user_id' => auth()->id(),
-                'type' => 'ride_booking',
-            ],
-        ];
-        
-        Log::info('Initiating PayChangu payment for ride booking', [
-            'booking_id' => $booking->id,
-            'amount' => $booking->total_price,
-            'tx_ref' => $txRef,
-        ]);
-        
-        // Initialize payment
-        $response = $this->paychangu->initializePayment($paymentData);
-        
-        if ($response['success']) {
-            session(['pending_ride_booking_id' => $booking->id]);
-            session(['pending_ride_tx_ref' => $txRef]);
-            
-            // Redirect to PayChangu checkout page
-            return redirect($response['checkout_url']);
-        } else {
-            return back()->with('error', $response['message'] ?? 'Unable to initiate payment');
-        }
+
+        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
     }
 
-    /**
-     * Handle payment return (user comes back after payment).
-     */
-    public function paymentReturn(Request $request)
-    {
-        $bookingId = session('pending_ride_booking_id');
-        
-        if (!$bookingId) {
-            return redirect()->route('user.bookings.index')
-                ->with('error', 'Payment session expired.');
-        }
-        
-        $booking = Booking::find($bookingId);
-        
-        if (!$booking) {
-            return redirect()->route('user.bookings.index')
-                ->with('error', 'Booking not found.');
-        }
-        
-        $reference = $request->query('reference');
-        
-        if ($reference) {
-            // Verify the transaction
-            $verification = $this->paychangu->verifyTransaction($reference);
-            
-            if ($verification['success'] && $verification['status'] === 'paid') {
-                return $this->processSuccessfulPayment($booking, $reference);
-            }
-        }
-        
-        return redirect()->route('user.bookings.payment', $booking)
-            ->with('error', 'Payment was not completed. Please try again.');
-    }
+    // ============================================================
+    // 4. CANCEL
+    // ============================================================
 
     /**
-     * Handle PayChangu webhook for ride bookings.
+     * Cancel the specified booking.
      */
-    public function handleWebhook(Request $request)
+    public function cancel(Booking $booking)
     {
-        $payload = $request->all();
-        
-        Log::info('PayChangu webhook received for ride booking', ['payload' => $payload]);
-        
-        $eventType = $payload['event'] ?? $payload['event_type'] ?? null;
-        $paymentData = $payload['data'] ?? $payload;
-        
-        if ($eventType === 'charge.completed' || ($paymentData['status'] ?? null) === 'paid') {
-            $reference = $paymentData['reference'] ?? $payload['reference'] ?? null;
-            $bookingId = $paymentData['meta']['booking_id'] ?? $payload['booking_id'] ?? null;
-            
-            if (!$reference || !$bookingId) {
-                Log::error('Webhook missing reference or booking_id');
-                return response()->json(['error' => 'Missing data'], 400);
-            }
-            
-            $booking = Booking::find($bookingId);
-            
-            if (!$booking) {
-                Log::error('Webhook booking not found', ['booking_id' => $bookingId]);
-                return response()->json(['error' => 'Booking not found'], 404);
-            }
-            
-            if (!$booking->is_paid) {
-                $this->processSuccessfulPayment($booking, $reference);
-            }
+        if ($booking->user_id !== Auth::id()) {
+            abort(403);
         }
-        
-        return response()->json(['status' => 'ok'], 200);
-    }
 
-    /**
-     * Process successful payment for ride booking.
-     */
-    protected function processSuccessfulPayment(Booking $booking, $transactionId)
-    {
-        DB::transaction(function () use ($booking, $transactionId) {
-            // Create payment record
-            Payment::create([
-                'booking_id' => $booking->id,
-                'user_id' => $booking->user_id,
-                'transaction_id' => $transactionId,
-                'amount' => $booking->total_price,
-                'payment_method' => 'paychangu',
-                'status' => 'completed',
-                'payment_date' => now(),
-            ]);
-            
-            // Update booking status
-            $booking->update([
-                'is_paid' => true,
-                'status' => 'confirmed',
-                'payment_date' => now(),
-            ]);
+        if (!in_array($booking->status, ['pending', 'confirmed'])) {
+            return back()->with('error', 'This booking cannot be cancelled.');
+        }
+
+        DB::transaction(function () use ($booking) {
+            // Restore seats
+            $booking->advertisement->increment('available_seats', $booking->number_of_seats);
+            $booking->update(['status' => 'cancelled']);
         });
-        
-        // Clear session
-        session()->forget(['pending_ride_booking_id', 'pending_ride_tx_ref']);
-        
-        Log::info('Ride booking payment processed successfully', [
-            'booking_id' => $booking->id,
-            'transaction_id' => $transactionId,
-        ]);
-        
-        return redirect()->route('user.bookings.show', $booking)
-            ->with('success', '✅ Payment successful! Your booking is confirmed. Transaction ID: ' . $transactionId);
+
+        return redirect()->route('user.bookings.index')
+            ->with('success', 'Booking cancelled successfully.');
     }
 
     /**
-     * Check if user can book using subscription (AJAX endpoint).
+     * Cancel a pending booking (legacy method).
+     */
+    public function cancelBooking($id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        if ($booking->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($booking->status !== 'pending') {
+            return redirect()->back()->with('error', 'Cannot cancel booking at this stage.');
+        }
+
+        DB::transaction(function () use ($booking) {
+            $advertisement = $booking->advertisement;
+            $advertisement->available_seats += $booking->number_of_seats;
+            $advertisement->save();
+
+            $booking->status = 'cancelled';
+            $booking->trip_status = 'cancelled';
+            $booking->save();
+
+            if ($booking->payment) {
+                $this->paymentService->processRefund($booking->payment);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Booking cancelled successfully.');
+    }
+
+    // ============================================================
+    // 5. TRIP MANAGEMENT (for Passengers & Vehicle Owners)
+    // ============================================================
+
+    /**
+     * Start a trip (allows both passenger and vehicle owner).
+     */
+    /**
+ * Start a trip (passenger boards the vehicle).
+ */
+// ============================================================
+// 5. TRIP MANAGEMENT (for Passengers)
+// ============================================================
+
+/**
+ * Start a trip – passenger boards the vehicle.
+ */
+public function startTrip(Booking $booking)
+{
+    // 🔥 DEBUG
+    \Log::info('🔥 startTrip called for booking ID: ' . $booking->id);
+    \Log::info('Current trip_status: ' . $booking->trip_status);
+    \Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
+
+    if ($booking->user_id !== Auth::id()) {
+        \Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to start booking ' . $booking->id);
+        abort(403, 'Unauthorized action.');
+    }
+
+    if ($booking->status !== 'confirmed') {
+        \Log::error('❌ Booking not confirmed: ' . $booking->status);
+        return back()->with('error', 'Booking must be confirmed to start trip.');
+    }
+
+    if ($booking->trip_status === 'completed') {
+        \Log::error('❌ Trip already completed');
+        return back()->with('error', 'This trip is already completed.');
+    }
+
+    if ($booking->trip_status === 'in_progress') {
+        \Log::error('❌ Trip already in progress');
+        return back()->with('error', 'Trip is already in progress.');
+    }
+
+    // ✅ Update the booking
+    $updated = $booking->update([
+        'trip_status' => 'in_progress',
+        'trip_started_at' => now(),
+    ]);
+
+    \Log::info('✅ Update result: ' . ($updated ? 'success' : 'failed'));
+
+    return back()->with('success', 'You have boarded the vehicle. Safe journey! 🚗');
+}
+public function completeTrip(Booking $booking)
+{
+    // 🔥 DEBUG
+    \Log::info('🔥 completeTrip called for booking ID: ' . $booking->id);
+    \Log::info('Current trip_status: ' . $booking->trip_status);
+    \Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
+
+    // ✅ Allow passenger to complete trip
+    if ($booking->user_id !== Auth::id()) {
+        abort(403, 'Unauthorized action.');
+    }
+
+    if ($booking->trip_status !== 'in_progress') {
+        return back()->with('error', 'Trip must be in progress to complete.');
+    }
+
+    if ($booking->status === 'completed') {
+        return back()->with('error', 'This trip is already completed.');
+    }
+
+    DB::transaction(function () use ($booking) {
+        if ($booking->platform_fee === null) {
+            $booking->platform_fee = $booking->total_price * 0.20;
+            $booking->owner_earnings = $booking->total_price * 0.80;
+        }
+
+        $booking->update([
+            'trip_status' => 'completed',
+            'trip_completed_at' => now(),
+            'status' => 'completed',
+        ]);
+    });
+
+    return back()->with('success', 'You have reached your destination. Thank you for riding with us! 🎉');
+}
+
+// ============================================================
+    // 6. SEARCH
+    // ============================================================
+
+    /**
+     * Search for available ride advertisements.
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'from' => 'required|string',
+            'to'   => 'required|string',
+            'date' => 'required|date|after:today',
+            'type' => 'nullable|in:ride_share,taxi,bus,bike_share'
+        ]);
+
+        $query = VehicleAdvertisement::active();
+
+        if ($request->type) {
+            $query->where('ad_type', $request->type);
+        }
+
+        $advertisements = $query->where('from_location', 'like', "%{$request->from}%")
+            ->where('to_location', 'like', "%{$request->to}%")
+            ->whereDate('departure_time', $request->date)
+            ->with(['vehicle', 'owner'])
+            ->paginate(15);
+
+        return view('bookings.search', compact('advertisements'));
+    }
+
+    // ============================================================
+    // 7. SUBSCRIPTION ELIGIBILITY (AJAX)
+    // ============================================================
+
+    /**
+     * Check subscription eligibility via AJAX.
      */
     public function checkSubscriptionEligibility(Request $request, VehicleAdvertisement $advertisement)
     {
@@ -369,6 +459,7 @@ class BookingController extends Controller
                 'eligible' => false,
                 'reason' => 'No active subscription',
                 'total_price' => $totalPrice,
+                'requires_payment' => true,
             ]);
         }
 
@@ -379,15 +470,17 @@ class BookingController extends Controller
                 'total_price' => $totalPrice,
                 'limit' => $subscription->getDailyLimit(),
                 'used' => $subscription->getTodaysUsageCount(),
+                'requires_payment' => true,
             ]);
         }
 
         return response()->json([
             'eligible' => true,
-            'reason' => 'Subscription applicable',
+            'reason' => 'Free with your subscription!',
             'total_price' => 0,
             'subscription_type' => $subscription->type,
             'remaining_today' => $subscription->getRemainingTodaysRides(),
+            'requires_payment' => false,
         ]);
     }
 }

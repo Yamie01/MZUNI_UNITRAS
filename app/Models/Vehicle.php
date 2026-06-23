@@ -107,4 +107,14 @@ class Vehicle extends Model
     {
         return $this->morphOne(VehicleLocation::class, 'trackable')->latest('recorded_at');
     }
+
+    public function fromLocation()
+{
+    return $this->belongsTo(Location::class, 'from_location_id');
+}
+
+public function toLocation()
+{
+    return $this->belongsTo(Location::class, 'to_location_id');
+}
 }

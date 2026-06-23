@@ -126,4 +126,17 @@ class User extends Authenticatable
     {
     return $this->hasMany(BikeRental::class);
     }
+
+    public function hasUnpaidLateFee(): bool
+{
+    return BikeRental::where('user_id', $this->id)
+        ->where('late_fee', '>', 0)
+        ->where('late_fee_paid', false)
+        ->exists();
+}
+public function payouts()
+{
+    return $this->hasMany(Payout::class);
+}
+
 }

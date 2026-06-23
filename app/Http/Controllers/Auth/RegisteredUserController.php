@@ -21,58 +21,46 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'user_type' => ['required', 'in:student,staff,vehicle_owner'],
-            'phone' => ['required', 'string', 'max:15'],
-        ]);
+ * Handle an incoming registration request.
+ */
+public function store(Request $request)
+{
+    $request->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+        'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        'phone' => ['nullable', 'string', 'max:20'],
+        'user_type' => ['required', 'in:student,staff,vehicle_owner'],
+        'university_id' => ['nullable', 'string', 'max:50', 'unique:users,university_id'],
+        'department' => ['nullable', 'string', 'max:100'],
+        'redirect_to' => ['nullable', 'string'], // ✅ accept redirect_to
+    ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'user_type' => $request->user_type,
-            'phone' => $request->phone,
-            'status' => 'active',
-        ]);
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+        'phone' => $request->phone,
+        'user_type' => $request->user_type,
+        'university_id' => $request->university_id,
+        'department' => $request->department,
+        'status' => 'active',
+    ]);
 
-        // Handle additional fields for student/staff
-        if (in_array($request->user_type, ['student', 'staff'])) {
-            $user->update([
-                'university_id' => $request->university_id,
-                'department' => $request->department,
-            ]);
-        }
+    event(new Registered($user));
 
-        // Handle additional fields for vehicle owner
-        if ($request->user_type === 'vehicle_owner') {
-            $user->update([
-                'driving_license' => $request->driving_license,
-                'license_expiry' => $request->license_expiry,
-            ]);
-        }
+    Auth::login($user);
 
-        event(new Registered($user));
+    // ✅ Redirect to intended page – check redirect_to first, then session, then fallback
+    $redirectTo = $request->input('redirect_to') 
+        ?? session('url.intended') 
+        ?? route('dashboard');
 
-        Auth::login($user);
+    // Clear the session intent so it doesn't persist
+    session()->forget('url.intended');
 
-        // ✅ Check for redirect_to parameter (for booking/rental after registration)
-        $redirectTo = $request->input('redirect_to');
-        
-        if ($redirectTo) {
-            return redirect($redirectTo);
-        }
-
-        // Fallback: Redirect based on user type
-        return $this->redirectToDashboard($user);
-    }
-
+    return redirect($redirectTo);
+}
     /**
      * Redirect users based on their type.
      */

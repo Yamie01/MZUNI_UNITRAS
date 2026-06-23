@@ -63,59 +63,55 @@ class VehicleController extends Controller
      * STORE: Save new vehicle
      */
     public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'vehicle_type' => 'required|in:bike,car,taxi,bus,minibus',
-            'registration_number' => 'required|string|unique:vehicles|max:20',
-            'make' => 'nullable|string|max:50',
-            'model' => 'required|string|max:50',
-            'year' => 'nullable|integer|min:1900|max:' . date('Y'),
-            'color' => 'nullable|string|max:30',
-            'capacity' => 'required|integer|min:1|max:100',
-            'fuel_type' => 'nullable|in:petrol,diesel,electric,hybrid',
-            'price_per_km' => 'nullable|numeric|min:0',
-            'price_per_day' => 'nullable|numeric|min:0',
-            'insurance_number' => 'nullable|string|max:50',
-            'insurance_expiry' => 'nullable|date|after:today',
-            'description' => 'nullable|string|max:1000',
-        ]);
+{
+    $request->validate([
+        'vehicle_type' => 'required|in:car,taxi,bus,minibus,bike,coaster',
+        'registration_number' => 'required|string|unique:vehicles',
+        'make' => 'nullable|string|max:255',
+        'model' => 'required|string|max:255',
+        'year' => 'nullable|integer|min:1900|max:' . date('Y'),
+        'color' => 'nullable|string|max:50',
+        'capacity' => 'required|integer|min:1',
+        'fuel_type' => 'nullable|in:petrol,diesel,electric,hybrid',
+        'price_per_seat' => 'nullable|numeric|min:0',
+        'price_per_day' => 'nullable|numeric|min:0',
+        'insurance_number' => 'nullable|string|max:255',
+        'insurance_expiry' => 'nullable|date',
+        'description' => 'nullable|string',
+        'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+    $vehicle = new Vehicle();
+    $vehicle->owner_id = Auth::id();
+    $vehicle->vehicle_type = $request->vehicle_type;
+    $vehicle->registration_number = $request->registration_number;
+    $vehicle->make = $request->make;
+    $vehicle->model = $request->model;
+    $vehicle->year = $request->year;
+    $vehicle->color = $request->color;
+    $vehicle->capacity = $request->capacity;
+    $vehicle->fuel_type = $request->fuel_type;
+    $vehicle->price_per_seat = $request->price_per_seat;
+    $vehicle->price_per_day = $request->price_per_day;
+    $vehicle->insurance_number = $request->insurance_number;
+    $vehicle->insurance_expiry = $request->insurance_expiry;
+    $vehicle->description = $request->description;
+    $vehicle->is_approved = false; // Pending approval
+    $vehicle->status = 'pending_approval';
+    $vehicle->save();
+
+    // Handle images
+    if ($request->hasFile('images')) {
+        foreach ($request->file('images') as $image) {
+            $path = $image->store('vehicles/' . $vehicle->id, 'public');
+            $vehicle->documents = json_encode([$path]); // Store as JSON
+            $vehicle->save();
         }
-
-        // Create vehicle
-        $vehicle = Auth::user()->vehicles()->create([
-            'vehicle_type' => $request->vehicle_type,
-            'registration_number' => strtoupper($request->registration_number),
-            'make' => $request->make,
-            'model' => $request->model,
-            'year' => $request->year,
-            'color' => $request->color,
-            'capacity' => $request->capacity,
-            'fuel_type' => $request->fuel_type,
-            'price_per_km' => $request->price_per_km,
-            'price_per_day' => $request->price_per_day,
-            'insurance_number' => $request->insurance_number,
-            'insurance_expiry' => $request->insurance_expiry,
-            'description' => $request->description,
-            'status' => 'available',
-            'is_approved' => false,
-        ]);
-
-        // Handle image upload (if any)
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('vehicles/' . $vehicle->id, 'public');
-                // Save path to vehicle_images table (you may need to create this)
-                // $vehicle->images()->create(['path' => $path]);
-            }
-        }
-
-        return redirect()->route('vehicle-owner.vehicles.index')
-            ->with('success', 'Vehicle added successfully. Awaiting admin approval.');
     }
 
+    return redirect()->route('vehicle-owner.vehicles.index')
+        ->with('success', 'Vehicle added successfully! Waiting for admin approval.');
+}
     /**
      * EDIT: Show edit form
      */

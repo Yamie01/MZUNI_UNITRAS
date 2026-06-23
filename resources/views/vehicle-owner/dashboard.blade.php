@@ -1,287 +1,370 @@
-@extends('layouts.app')
+@extends('layouts.vehicle-owner')
 
 @section('title', 'Vehicle Owner Dashboard - Mzuni UNITRAS')
 
 @push('styles')
 <style>
-    :root {
-        --primary: #00529b;
-        --primary-dark: #003f75;
-        --secondary: #ff6b35;
-        --sidebar-width: 280px;
-    }
-    
-    .dashboard-wrapper {
-        display: flex;
-        min-height: calc(100vh - 70px);
-        background: #f8fafc;
-    }
-    
-    /* Sidebar Styles */
-    .dashboard-sidebar {
-        width: var(--sidebar-width);
-        background: white;
-        border-right: 1px solid #e2edf2;
-        padding: 1.5rem 0;
-        position: sticky;
-        top: 70px;
-        height: calc(100vh - 70px);
-        overflow-y: auto;
-    }
-    
-    .sidebar-nav {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .sidebar-nav li {
-        margin-bottom: 4px;
-    }
-    
-    .sidebar-nav a {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1.5rem;
-        color: #4a6272;
-        text-decoration: none;
-        transition: all 0.2s;
-        font-weight: 500;
-        gap: 12px;
-    }
-    
-    .sidebar-nav a i {
-        width: 24px;
-        font-size: 1.1rem;
-    }
-    
-    .sidebar-nav a:hover {
-        background: #f1f5f9;
-        color: var(--primary);
-    }
-    
-    .sidebar-nav a.active {
-        background: #ebf8ff;
-        color: var(--primary);
-        border-right: 3px solid var(--primary);
-    }
-    
-    /* Main Content */
-    .dashboard-main {
-        flex: 1;
-        padding: 1.5rem;
-        overflow-x: auto;
-    }
-    
-    /* Stats Cards */
     .stat-card {
         background: white;
-        border-radius: 20px;
-        padding: 1.2rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        transition: 0.2s;
+        border-radius: 16px;
+        padding: 1.2rem 1.5rem;
+        border: 1px solid #E2E8F0;
+        transition: all 0.25s ease;
         height: 100%;
-        border: 1px solid #e2edf2;
     }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 20px -10px rgba(0,82,155,0.15); }
-    .stat-icon { width: 48px; height: 48px; background: var(--primary); border-radius: 30px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; }
-    
-    /* Quick Action Buttons */
-    .action-btn { border-radius: 60px; padding: 0.6rem 1.2rem; font-weight: 500; transition: all 0.2s; }
-    .btn-outline-primary-custom { border: 1px solid var(--primary); color: var(--primary); background: white; }
-    .btn-outline-primary-custom:hover { background: var(--primary); color: white; }
-    
-    /* Lists */
-    .list-group-item { border-left: 3px solid transparent; transition: 0.2s; }
-    .list-group-item:hover { border-left-color: var(--primary); background: #f8fafc; }
-    .recent-item { background: white; border-radius: 20px; padding: 1rem; margin-bottom: 1rem; border-left: 4px solid var(--primary); }
-    
-    @media (max-width: 768px) {
-        .dashboard-wrapper { flex-direction: column; }
-        .dashboard-sidebar { width: 100%; height: auto; position: relative; top: 0; }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px -10px rgba(0,0,0,0.08);
+        border-color: #0D6EFD;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .stat-icon.blue { background: #DBEAFE; color: #1D4ED8; }
+    .stat-icon.green { background: #D1FAE5; color: #065F46; }
+    .stat-icon.orange { background: #FEF3C7; color: #92400E; }
+    .stat-icon.purple { background: #EDE9FE; color: #5B21B6; }
+
+    .stat-number {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1E293B;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        color: #64748B;
+        font-weight: 500;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.2rem 1.5rem;
+        border: 1px solid #E2E8F0;
+        text-decoration: none;
+        color: #1E293B;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        height: 100%;
+    }
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px -10px rgba(0,0,0,0.08);
+        border-color: #0D6EFD;
+        color: #0D6EFD;
+    }
+    .action-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .action-icon.blue { background: #DBEAFE; color: #1D4ED8; }
+    .action-icon.green { background: #D1FAE5; color: #065F46; }
+    .action-icon.orange { background: #FEF3C7; color: #92400E; }
+    .action-icon.purple { background: #EDE9FE; color: #5B21B6; }
+    .action-icon.red { background: #FEE2E2; color: #991B1B; }
+
+    .action-text h6 {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin: 0;
+        color: #1E293B;
+    }
+    .action-text small {
+        font-size: 0.75rem;
+        color: #94A3B8;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #E2E8F0;
+        overflow: hidden;
+    }
+    .table-container .table-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #E2E8F0;
+        background: #FAFBFC;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .table-container .table-header h6 {
+        font-weight: 600;
+        margin: 0;
+        color: #1E293B;
+    }
+    .table-container .table {
+        margin-bottom: 0;
+    }
+    .table-container .table td {
+        padding: 0.8rem 1.5rem;
+        vertical-align: middle;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    .table-container .table tr:last-child td { border-bottom: none; }
+    .table-container .table tr:hover td { background: #FAFBFC; }
+
+    .empty-state {
+        padding: 3rem 1.5rem;
+        text-align: center;
+        color: #94A3B8;
+    }
+    .empty-state i {
+        font-size: 3rem;
+        color: #CBD5E1;
+        margin-bottom: 1rem;
+        display: block;
     }
 </style>
 @endpush
 
 @section('content')
-<div class="dashboard-wrapper">
-    <!-- Sidebar -->
-    <div class="dashboard-sidebar">
-        <div class="text-center mb-4">
-            <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center text-white" style="width: 70px; height: 70px;">
-                <i class="fas fa-user-tie fa-2x"></i>
-            </div>
-            <h5 class="mt-2 mb-0">{{ Auth::user()->name }}</h5>
-            <small class="text-muted">Vehicle Owner</small>
+<div class="container-fluid">
+
+    {{-- Top Bar --}}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Welcome back, {{ Auth::user()->name }}! 🎉</h4>
+            <p class="text-muted">Here's what's happening with your business today.</p>
         </div>
-        <hr>
-        <ul class="sidebar-nav">
-            <li><a href="{{ route('vehicle-owner.dashboard') }}" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="{{ route('vehicle-owner.vehicles.index') }}"><i class="fas fa-car"></i> My Vehicles</a></li>
-            <li><a href="{{ route('vehicle-owner.advertisements.index') }}"><i class="fas fa-ad"></i> My Ads</a></li>
-            <li><a href="{{ route('vehicle-owner.bookings.index') }}"><i class="fas fa-calendar-check"></i> Bookings</a></li>
-            <li><a href="{{ route('vehicle-owner.earnings') }}"><i class="fas fa-coins"></i> Earnings</a></li>
-            <li><a href="{{ route('profile.edit') }}"><i class="fas fa-user-circle"></i> Profile</a></li>
-            <li><hr></li>
-            <li><a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-        <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">@csrf</form>
+        <div>
+            <span class="badge bg-success bg-opacity-10 text-success p-2 px-3">
+                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i> Online
+            </span>
+        </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="dashboard-main">
-        <!-- Welcome & Balance -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h4 class="fw-bold mb-0">Welcome back, {{ Auth::user()->name }}! 😊</h4>
-                <p class="text-muted">Here’s what’s happening with your business today.</p>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold">Total Earnings: <span class="text-primary">MWK {{ number_format($earnings ?? 0, 2) }}</span></div>
-                <small class="text-muted">From {{ $completedTrips ?? 0 }} completed trips</small>
-            </div>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card d-flex align-items-center">
-                    <div class="stat-icon me-3"><i class="fas fa-car-side"></i></div>
-                    <div><h3 class="fw-bold mb-0">{{ $vehicles->count() ?? 0 }}</h3><p class="text-muted mb-0">My Vehicles</p></div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card d-flex align-items-center">
-                    <div class="stat-icon me-3"><i class="fas fa-ad"></i></div>
-                    <div><h3 class="fw-bold mb-0">{{ $activeAds->count() ?? 0 }}</h3><p class="text-muted mb-0">Active Ads</p></div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card d-flex align-items-center">
-                    <div class="stat-icon me-3"><i class="fas fa-calendar-check"></i></div>
-                    <div><h3 class="fw-bold mb-0">{{ $totalBookings ?? 0 }}</h3><p class="text-muted mb-0">Total Bookings</p></div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card d-flex align-items-center">
-                    <div class="stat-icon me-3"><i class="fas fa-coins"></i></div>
-                    <div><h3 class="fw-bold mb-0 text-success">MWK {{ number_format($earnings ?? 0, 2) }}</h3><p class="text-muted mb-0">Total Earnings</p></div>
+    {{-- Stats Cards --}}
+    <div class="row g-4 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon blue me-3"><i class="fas fa-wallet"></i></div>
+                <div>
+                    <div class="stat-number">MWK {{ number_format($totalEarnings ?? 0, 2) }}</div>
+                    <div class="stat-label">Total Earnings</div>
+                    <small class="text-muted">{{ $completedTrips ?? 0 }} completed trips</small>
                 </div>
             </div>
         </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon green me-3"><i class="fas fa-car"></i></div>
+                <div>
+                    <div class="stat-number">{{ $activeVehicles ?? 0 }}</div>
+                    <div class="stat-label">Active Vehicles</div>
+                    <small class="text-muted">Approved & available</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon orange me-3"><i class="fas fa-ad"></i></div>
+                <div>
+                    <div class="stat-number">{{ $activeAds->count() ?? 0 }}</div>
+                    <div class="stat-label">Active Ads</div>
+                    <small class="text-muted">Live advertisements</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card d-flex align-items-center">
+                <div class="stat-icon purple me-3"><i class="fas fa-calendar-check"></i></div>
+                <div>
+                    <div class="stat-number">{{ $pendingBookings ?? 0 }}</div>
+                    <div class="stat-label">Pending Bookings</div>
+                    <small class="text-muted">Awaiting confirmation</small>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Quick Actions -->
-        <div class="mb-4">
+    {{-- Quick Actions --}}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
             <h6 class="fw-bold mb-3">Quick Actions</h6>
-            <div class="d-flex flex-wrap gap-2">
-                <a href="{{ route('vehicle-owner.vehicles.create') }}" class="btn action-btn btn-primary"><i class="fas fa-plus-circle me-2"></i>Add Vehicle</a>
-                <a href="{{ route('vehicle-owner.advertisements.create') }}" class="btn action-btn btn-outline-primary-custom"><i class="fas fa-car me-2"></i>Post a Ride</a>
-                <a href="{{ route('vehicle-owner.bookings.index') }}" class="btn action-btn btn-outline-secondary"><i class="fas fa-ticket-alt me-2"></i>View Bookings</a>
-                <a href="{{ route('vehicle-owner.advertisements.index') }}" class="btn action-btn btn-outline-secondary"><i class="fas fa-list me-2"></i>Manage Ads</a>
-                <a href="{{ route('search') }}" class="btn action-btn btn-info text-white"><i class="fas fa-search me-2"></i>Find a Ride (as passenger)</a>
-            </div>
         </div>
+        <div class="col-md-3 col-sm-6">
+            <a href="{{ route('vehicle-owner.vehicles.create') }}" class="action-card">
+                <div class="action-icon blue"><i class="fas fa-plus-circle"></i></div>
+                <div class="action-text">
+                    <h6>Add Vehicle</h6>
+                    <small>Register a new vehicle</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a href="{{ route('vehicle-owner.advertisements.create') }}" class="action-card">
+                <div class="action-icon green"><i class="fas fa-share-alt"></i></div>
+                <div class="action-text">
+                    <h6>Post a Ride</h6>
+                    <small>Publish a new ride ad</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a href="{{ route('vehicle-owner.bookings.index') }}" class="action-card">
+                <div class="action-icon orange"><i class="fas fa-calendar-check"></i></div>
+                <div class="action-text">
+                    <h6>View Bookings</h6>
+                    <small>Manage ride bookings</small>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <a href="{{ route('vehicle-owner.advertisements.index') }}" class="action-card">
+                <div class="action-icon purple"><i class="fas fa-list-ul"></i></div>
+                <div class="action-text">
+                    <h6>Manage Ads</h6>
+                    <small>View all advertisements</small>
+                </div>
+            </a>
+        </div>
+    </div>
 
-        <div class="row">
-            <!-- My Vehicles -->
-            <div class="col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-car me-2"></i>My Vehicles</span>
-                        <a href="{{ route('vehicle-owner.vehicles.index') }}" class="btn btn-sm btn-outline-primary">Manage Vehicles</a>
-                    </div>
-                    <div class="card-body p-0">
-                        @if($vehicles->count())
-                            <div class="list-group list-group-flush">
-                                @foreach($vehicles as $vehicle)
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>{{ $vehicle->brand }} {{ $vehicle->model }}</strong>
-                                            <div class="small text-muted">{{ $vehicle->plate_number }} • {{ $vehicle->year }}</div>
-                                        </div>
+    {{-- Recent Vehicles & Ads --}}
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="table-container">
+                <div class="table-header">
+                    <h6><i class="fas fa-car me-2"></i>My Vehicles</h6>
+                    <a href="{{ route('vehicle-owner.vehicles.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="table-responsive">
+                    @if(($recentVehicles ?? [])->count() > 0)
+                        <table class="table">
+                            <tbody>
+                                @foreach($recentVehicles as $vehicle)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $vehicle->model }}</strong>
+                                        <div class="small text-muted">{{ $vehicle->registration_number }}</div>
+                                    </td>
+                                    <td>
                                         <span class="badge {{ $vehicle->is_approved ? 'bg-success' : 'bg-warning' }}">
                                             {{ $vehicle->is_approved ? 'Approved' : 'Pending' }}
                                         </span>
-                                    </div>
+                                    </td>
+                                </tr>
                                 @endforeach
-                            </div>
-                        @else
-                            <div class="text-center py-4">
-                                <i class="fas fa-car fa-2x text-muted mb-2"></i>
-                                <p>No vehicles registered yet.</p>
-                                <a href="{{ route('vehicle-owner.vehicles.create') }}" class="btn btn-sm btn-primary">Add Vehicle</a>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Ads -->
-            <div class="col-md-6 mb-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-ad me-2"></i>Active Ride Ads</span>
-                        <a href="{{ route('vehicle-owner.advertisements.create') }}" class="btn btn-sm btn-outline-primary">Post a Ride</a>
-                    </div>
-                    <div class="card-body p-0">
-                        @if($activeAds->count())
-                            <div class="list-group list-group-flush">
-                                @foreach($activeAds as $ad)
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <strong>{{ $ad->from_location }} → {{ $ad->to_location }}</strong>
-                                                <div class="small text-muted">
-                                                    {{ \Carbon\Carbon::parse($ad->departure_time)->format('d M Y, H:i') }} •
-                                                    {{ $ad->available_seats }} seats • MWK {{ number_format($ad->price) }}
-                                                </div>
-                                            </div>
-                                            <a href="{{ route('vehicle-owner.advertisements.edit', $ad) }}" class="btn btn-sm btn-outline-primary">Manage</a>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <div class="text-center py-4">
-                                <i class="fas fa-ad fa-2x text-muted mb-2"></i>
-                                <p>No active ride ads. Post your first ride!</p>
-                                <a href="{{ route('vehicle-owner.advertisements.create') }}" class="btn btn-sm btn-primary">Post a Ride</a>
-                            </div>
-                        @endif
-                    </div>
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="empty-state">
+                            <i class="fas fa-car"></i>
+                            <p>No vehicles registered yet.</p>
+                            <a href="{{ route('vehicle-owner.vehicles.create') }}" class="btn btn-sm btn-primary">Add Vehicle</a>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
 
-        <!-- Recent Booking Requests -->
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-bold">Recent Booking Requests</div>
-            <div class="card-body">
-                @if($recentBookings->count())
-                    <div class="table-responsive">
-                        <table class="table table-hover">
+        <div class="col-md-6">
+            <div class="table-container">
+                <div class="table-header">
+                    <h6><i class="fas fa-ad me-2"></i>Active Ads</h6>
+                    <a href="{{ route('vehicle-owner.advertisements.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="table-responsive">
+                    @if(($activeAds ?? [])->count() > 0)
+                        <table class="table">
+                            <tbody>
+                                @foreach($activeAds as $ad)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $ad->from_location }} → {{ $ad->to_location }}</strong>
+                                        <div class="small text-muted">
+                                            {{ \Carbon\Carbon::parse($ad->departure_time)->format('d M Y, H:i') }}
+                                            • {{ $ad->available_seats }} seats
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ $ad->trip_status === 'in_progress' ? 'bg-success' : 'bg-info' }}">
+                                            {{ ucfirst($ad->trip_status ?? 'scheduled') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="empty-state">
+                            <i class="fas fa-ad"></i>
+                            <p>No active advertisements.</p>
+                            <a href="{{ route('vehicle-owner.advertisements.create') }}" class="btn btn-sm btn-primary">Post a Ride</a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Recent Bookings --}}
+    <div class="row">
+        <div class="col-12">
+            <div class="table-container">
+                <div class="table-header">
+                    <h6><i class="fas fa-calendar-alt me-2"></i>Recent Bookings</h6>
+                    <a href="{{ route('vehicle-owner.bookings.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="table-responsive">
+                    @if(($recentBookings ?? [])->count() > 0)
+                        <table class="table">
                             <thead>
-                                <tr><th>Passenger</th><th>Route</th><th>Seats</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Route</th>
+                                    <th>Seats</th>
+                                    <th>Status</th>
+                                    <th>Trip Status</th>
+                                    <th>Action</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 @foreach($recentBookings as $booking)
                                 <tr>
-                                    <td>{{ $booking->user->name }}</td>
-                                    <td>{{ $booking->advertisement->from_location }} → {{ $booking->advertisement->to_location }}</td>
+                                    <td>{{ $booking->user->name ?? 'N/A' }}</td>
+                                    <td>{{ $booking->pickup_point }} → {{ $booking->dropoff_point }}</td>
                                     <td>{{ $booking->number_of_seats }}</td>
-                                    <td>MWK {{ number_format($booking->total_price) }}</td>
-                                    <td><span class="badge bg-{{ $booking->status == 'pending' ? 'warning' : ($booking->status == 'confirmed' ? 'info' : 'success') }}">{{ ucfirst($booking->status) }}</span></td>
                                     <td>
-                                        @if($booking->status == 'pending')
-                                            <form action="{{ route('vehicle-owner.bookings.update', $booking) }}" method="POST" class="d-inline">
-                                                @csrf @method('PATCH')
-                                                <input type="hidden" name="status" value="confirmed">
-                                                <button class="btn btn-sm btn-success">Accept</button>
-                                            </form>
-                                            <form action="{{ route('vehicle-owner.bookings.update', $booking) }}" method="POST" class="d-inline">
-                                                @csrf @method('PATCH')
-                                                <input type="hidden" name="status" value="cancelled">
-                                                <button class="btn btn-sm btn-danger">Reject</button>
+                                        <span class="badge bg-{{ $booking->status === 'pending' ? 'warning' : ($booking->status === 'confirmed' ? 'info' : 'success') }}">
+                                            {{ ucfirst($booking->status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @php $tripStatus = $booking->trip_status ?? 'pending'; @endphp
+                                        <span class="badge bg-{{ $tripStatus === 'in_progress' ? 'success' : ($tripStatus === 'completed' ? 'secondary' : 'secondary') }}">
+                                            {{ ucfirst($tripStatus) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('vehicle-owner.bookings.show', $booking) }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if($booking->status === 'confirmed' && $tripStatus === 'pending')
+                                            <form action="{{ route('vehicle-owner.bookings.start-trip', $booking) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
                                             </form>
                                         @endif
                                     </td>
@@ -289,10 +372,13 @@
                                 @endforeach
                             </tbody>
                         </table>
-                    </div>
-                @else
-                    <p class="text-muted text-center py-3">No booking requests yet.</p>
-                @endif
+                    @else
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-alt"></i>
+                            <p>No recent bookings.</p>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
     </div>

@@ -16,201 +16,178 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        /* Your existing styles remain unchanged */
         :root {
-            --primary: #00529b;
-            --primary-dark: #003f75;
-            --secondary: #ff6b35;
-            --light-bg: #e3f1f7;
+            --primary: #0D6EFD;
+            --secondary: #198754;
+            --accent: #FD7E14;
+            --dark: #1E293B;
+            --light: #F8F9FA;
+            --text: #212529;
+            font-size: 18px;
         }
-        * { font-family: 'Inter', sans-serif; }
-        body { background: var(--light-bg); overflow-x: hidden; }
 
+        * { font-family: 'Inter', sans-serif; }
+
+        body {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            background: linear-gradient(
+                rgba(13,110,253,0.75),
+                rgba(25,135,84,0.65)
+            ),
+            url('https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* NAVBAR */
         .navbar {
-            background: rgba(255,255,255,0.96);
-            backdrop-filter: blur(8px);
-            box-shadow: 0 2px 18px rgba(0,0,0,0.05);
-            padding: 0.8rem 0;
+            background: var(--dark) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            padding: 0.9rem 0;
         }
         .navbar-brand {
             font-weight: 800;
-            font-size: 1.65rem;
-            background: linear-gradient(135deg, var(--primary), #0077be);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
+            font-size: 1.6rem;
+            color: white !important;
         }
-        .btn-outline-primary {
-            border-color: var(--primary);
-            color: var(--primary);
-            border-radius: 40px;
+        .navbar .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            font-weight: 500;
         }
+        .navbar .nav-link:hover { color: var(--accent) !important; }
+
+        /* BUTTONS */
         .btn-primary {
             background: var(--primary);
             border: none;
-            border-radius: 40px;
         }
+        .btn-primary:hover { background: #084298; }
+        .btn-outline-primary {
+            border-color: white;
+            color: white;
+        }
+        .btn-outline-primary:hover {
+            background: white;
+            color: var(--primary);
+        }
+
+        /* HERO */
         .hero {
-            background: linear-gradient(110deg, #f0f6fe 0%, #ffffff 100%);
-            padding: 5rem 0 3rem;
-            margin-top: 70px;
+            padding: 6rem 0 3rem;
+            min-height: 600px;
+            display: flex;
+            align-items: center;
         }
         .hero-title {
+            font-size: 3.5rem;
             font-weight: 800;
-            font-size: 3rem;
-            line-height: 1.2;
         }
-        .search-card {
-            background: white;
-            border-radius: 28px;
-            padding: 1.8rem;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+        .lead {
+            font-size: 1.3rem;
+            opacity: 0.95;
         }
-        .action-buttons-group {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        .btn-offer, .btn-share {
-            padding: 0.7rem 1.8rem;
-            border-radius: 60px;
-            font-weight: 600;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            border: none;
-        }
+
+        /* ACTION BUTTONS */
         .btn-offer {
-            background: var(--primary);
+            background: var(--secondary);
             color: white;
-            box-shadow: 0 4px 10px rgba(0,82,155,0.2);
+            border-radius: 50px;
+            padding: 0.9rem 2rem;
+            border: none;
+            display: inline-block;
+            text-decoration: none;
+            transition: 0.3s;
         }
         .btn-share {
-            background: white;
-            color: var(--primary-dark);
-            border: 1px solid #cddfea;
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+            border-radius: 50px;
+            padding: 0.9rem 2rem;
+            display: inline-block;
+            text-decoration: none;
+            transition: 0.3s;
         }
         .btn-offer:hover, .btn-share:hover {
-            transform: translateY(-3px);
-        }
-        .service-tabs {
-            background: white;
-            border-radius: 60px;
-            display: inline-flex;
-            padding: 0.4rem;
-            border: 1px solid #e2edf2;
-            margin-bottom: 2rem;
-        }
-        .tab-btn {
-            background: transparent;
-            border: none;
-            padding: 0.7rem 2rem;
-            border-radius: 60px;
-            font-weight: 600;
-            color: #4a6272;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .tab-btn.active {
-            background: var(--primary);
+            background: var(--accent);
+            border-color: var(--accent);
             color: white;
         }
+
+        /* SEARCH CARD */
+        .search-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 25px;
+            padding: 2rem;
+            color: var(--text);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        }
+
+        /* SERVICE SECTION */
+        .services-section,
+        .about-section,
+        .cta-section {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        /* TAB BUTTONS */
+        .tab-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 0.7rem 2rem;
+            border-radius: 50px;
+        }
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+        }
+
+        /* CARDS */
         .ride-card, .bike-card {
             background: white;
-            border-radius: 24px;
-            transition: 0.25s;
-            border: 1px solid #eef2f8;
-            height: 100%;
-            cursor: pointer;
-            overflow: hidden;
+            color: var(--text);
+            border-radius: 20px;
+            transition: 0.3s ease;
         }
         .ride-card:hover, .bike-card:hover {
             transform: translateY(-6px);
-            box-shadow: 0 20px 30px -12px rgba(0,82,155,0.12);
+            box-shadow: 0 15px 35px rgba(13,110,253,0.25);
         }
-        .card-img {
-            height: 160px;
-            background-size: cover;
-            background-position: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #e9f0f5;
-        }
-        .price {
-            font-weight: 800;
-            font-size: 1.3rem;
-            color: var(--primary);
-        }
-        .book-btn {
-            background: transparent;
-            border: 1px solid #cddfea;
-            border-radius: 40px;
-            padding: 0.4rem;
-            font-weight: 500;
-            transition: 0.2s;
-        }
-        .book-btn:hover {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-        .stat-container {
-            background: linear-gradient(120deg, var(--primary), #0c4e7a);
-            border-radius: 48px;
-        }
+        .price { color: var(--primary); font-weight: 800; }
+
+        /* INFO CARDS */
         .info-card {
             background: white;
-            border-radius: 20px;
-            padding: 1.2rem;
-            margin-top: 1.5rem;
-            border-left: 4px solid var(--primary);
+            color: var(--text);
+            border-left: 5px solid var(--primary);
+            border-radius: 15px;
         }
+
+        /* STAT BOX */
+        .stat-container {
+            background: var(--primary);
+            border-radius: 30px;
+        }
+
+        /* FOOTER */
+        footer {
+            background: var(--dark);
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* MAP */
         #map {
             height: 300px;
-            border-radius: 16px;
-            margin: 15px 0;
-            border: 1px solid #dee2e6;
-            z-index: 1;
-        }
-        .map-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .btn-map {
-            background: #f1f3f5;
-            border: none;
-            border-radius: 40px;
-            padding: 5px 15px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        .location-input-group {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .location-input-group input {
-            flex: 1;
-        }
-        .btn-geolocate {
-            background: #60a4e7;
-            border: none;
-            border-radius: 40px;
-            padding: 6px 12px;
-        }
-        footer {
-            background: #c7a0e7;
-            color: #3fdd7c;
-        }
-        @media (max-width: 768px) {
-            .hero-title { font-size: 2rem; }
-            .tab-btn { padding: 0.5rem 1.2rem; font-size: 0.85rem; }
+            border-radius: 15px;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
@@ -261,11 +238,15 @@
         <div class="row align-items-center gy-4">
             <div class="col-lg-6">
                 <div class="badge bg-light text-primary rounded-pill mb-3"><i class="fas fa-shield-alt me-1"></i> Trusted by Mzuzu Community</div>
-                <h1 class="hero-title">Your Campus Ride, <span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); background-clip: text; -webkit-background-clip: text; color: transparent;">Just a Tap Away</span></h1>
+                <h1 class="hero-title">Your Campus Ride, <span style="background: linear-gradient(135deg, #fff, #ffd966); background-clip: text; -webkit-background-clip: text; color: transparent;">Just a Tap Away</span></h1>
                 <p class="lead mt-3">Safe carpool & bike sharing for students, staff, and locals. Browse freely – book only when you're ready.</p>
                 <div class="action-buttons-group mt-4">
-                    <button class="btn-offer" id="heroOfferBtn"><i class="fas fa-plus-circle"></i> Offer a ride</button>
-                    <button class="btn-share" id="heroShareBtn"><i class="fas fa-share-alt"></i> Share a ride</button>
+                    <a href="{{ route('offer.ride') }}" class="btn-offer">
+                        <i class="fas fa-plus-circle"></i> Offer a ride
+                    </a>
+                    <a href="{{ route('offer.ride') }}" class="btn-share">
+                        <i class="fas fa-share-alt"></i> Share a ride
+                    </a>
                 </div>
             </div>
             <div class="col-lg-6">
@@ -276,22 +257,31 @@
                         <button id="setToBtn" class="btn-map"><i class="fas fa-flag-checkered"></i> Set as "To"</button>
                         <button id="clearMarkersBtn" class="btn-map"><i class="fas fa-eraser"></i> Clear</button>
                     </div>
-                    <div id="map"></div>
+                    <div id="map" style="height:300px; border-radius:15px; background:#e9ecef;"></div>
                     <div class="mb-3">
                         <label class="form-label text-muted small">From (pickup)</label>
                         <div class="location-input-group">
-                            <input type="text" id="searchFrom" class="form-control" list="locationList" placeholder="Type or select location" autocomplete="off">
+                            <select id="searchFrom" class="form-select">
+                                <option value="">Select pickup location</option>
+                                @foreach($locations as $loc)
+                                    <option value="{{ $loc->id }}" {{ request('from_location_id') == $loc->id ? 'selected' : '' }}>
+                                        {{ $loc->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                             <button id="geolocateBtn" class="btn-geolocate" title="Use my current location"><i class="fas fa-location-dot"></i></button>
                         </div>
-                        <datalist id="locationList">
-                            @foreach($locations as $location)
-                                <option value="{{ $location }}">
-                            @endforeach
-                        </datalist>
                     </div>
                     <div class="mb-3" id="toFieldWrapper">
                         <label class="form-label text-muted small">To (destination)</label>
-                        <input type="text" id="searchTo" class="form-control" list="locationList" placeholder="Type or select destination" autocomplete="off">
+                        <select id="searchTo" class="form-select">
+                            <option value="">Select destination</option>
+                            @foreach($locations as $loc)
+                                <option value="{{ $loc->id }}" {{ request('to_location_id') == $loc->id ? 'selected' : '' }}>
+                                    {{ $loc->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="mb-3" id="bikeTypeWrapper" style="display: none;">
                         <label class="form-label text-muted small">Bike type</label>
@@ -314,113 +304,123 @@
     </div>
 </section>
 
-<!-- Services Section (with data-ride-id and data-bike-id) -->
+<!-- Services Section -->
 <section id="services" class="py-5">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-            <div class="service-tabs">
-                <button class="tab-btn active" id="tabCarpool" data-tab="carpool">
-                    <i class="fas fa-car-side"></i> Carpool (Ride sharing)
-                </button>
-                <button class="tab-btn" id="tabBike" data-tab="bike">
-                    <i class="fas fa-bicycle"></i> Bike sharing
-                </button>
+        <div class="services-section">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div class="service-tabs">
+                    <button class="tab-btn active" id="tabCarpool" data-tab="carpool">
+                        <i class="fas fa-car-side"></i> Carpool (Ride sharing)
+                    </button>
+                    <button class="tab-btn" id="tabBike" data-tab="bike">
+                        <i class="fas fa-bicycle"></i> Bike sharing
+                    </button>
+                </div>
+                <div class="action-buttons-group">
+                    <a href="{{ route('offer.ride') }}" class="btn-offer" style="padding:0.6rem 1.5rem; font-size:0.9rem;">
+                        <i class="fas fa-plus-circle"></i> Offer a ride
+                    </a>
+                    <a href="{{ route('offer.ride') }}" class="btn-share" style="padding:0.6rem 1.5rem; font-size:0.9rem;">
+                        <i class="fas fa-share-alt"></i> Share a ride
+                    </a>
+                </div>
             </div>
-            <div class="action-buttons-group">
-                <button class="btn-offer" id="tabOfferBtn"><i class="fas fa-plus-circle"></i> Offer a ride</button>
-                <button class="btn-share" id="tabShareBtn"><i class="fas fa-share-alt"></i> Share a ride</button>
-            </div>
-        </div>
 
-        <!-- Carpool Panel (rides) -->
-        <div id="carpoolPanel">
-            <div class="row g-4" id="ridesList">
-                @forelse($availableVehicles as $ride)
-                    <div class="col-lg-4 col-md-6 ride-item" 
-                         data-ride-id="{{ $ride->id }}"
-                         data-from="{{ strtolower($ride->from_location) }}" 
-                         data-to="{{ strtolower($ride->to_location) }}" 
-                         data-date="{{ \Carbon\Carbon::parse($ride->departure_time)->format('Y-m-d') }}"
-                         data-price="{{ $ride->price }}">
-                        <div class="ride-card">
-                            <div class="card-img"><i class="fas fa-car-side fa-3x text-primary"></i></div>
-                            <div class="p-3">
-                                <div class="d-flex justify-content-between">
-                                    <span class="badge bg-primary-light text-primary">{{ ucfirst(str_replace('_', ' ', $ride->ad_type)) }}</span>
-                                    <span class="price">MWK {{ number_format($ride->price, 0) }}</span>
-                                </div>
-                                <h5 class="fw-bold mt-2">{{ $ride->from_location }} → {{ $ride->to_location }}</h5>
-                                <div class="text-muted small">
-                                    <i class="far fa-calendar-alt"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
-                                    <span class="ms-2"><i class="fas fa-users"></i> {{ $ride->available_seats }} seats</span>
-                                </div>
-                                <div class="mt-2 small text-warning">
-                                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i> 4.8 (120 reviews)
-                                </div>
-                                <div class="d-grid mt-3">
-                                    <button class="book-btn book-action" data-type="ride">Book ride <i class="fas fa-arrow-right ms-1"></i></button>
+            <!-- Carpool Panel -->
+            <div id="carpoolPanel">
+                <div class="row g-4" id="ridesList">
+                    @forelse($availableVehicles as $ride)
+                        @php
+                            $fromName = $ride->fromLocation->name ?? $ride->from_location ?? 'N/A';
+                            $toName   = $ride->toLocation->name ?? $ride->to_location ?? 'N/A';
+                        @endphp
+                        <div class="col-lg-4 col-md-6 ride-item" 
+                             data-ride-id="{{ $ride->id }}"
+                             data-from-id="{{ $ride->from_location_id ?? '' }}"
+                             data-to-id="{{ $ride->to_location_id ?? '' }}"
+                             data-date="{{ \Carbon\Carbon::parse($ride->departure_time)->format('Y-m-d') }}"
+                             data-price="{{ $ride->price }}">
+                            <div class="ride-card">
+                                <div class="card-img"><i class="fas fa-car-side fa-3x text-primary"></i></div>
+                                <div class="p-3">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge bg-primary-light text-primary">{{ ucfirst(str_replace('_', ' ', $ride->ad_type)) }}</span>
+                                        <span class="price">MWK {{ number_format($ride->price, 0) }}</span>
+                                    </div>
+                                    <h5 class="fw-bold mt-2">{{ $fromName }} → {{ $toName }}</h5>
+                                    <div class="text-muted small">
+                                        <i class="far fa-calendar-alt"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
+                                        <span class="ms-2"><i class="fas fa-users"></i> {{ $ride->available_seats }} seats</span>
+                                    </div>
+                                    <div class="mt-2 small text-warning">
+                                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i> 4.8 (120 reviews)
+                                    </div>
+                                    <div class="d-grid mt-3">
+                                        <button class="book-btn book-action" data-type="ride">Book ride <i class="fas fa-arrow-right ms-1"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                @empty
-                    <div class="col-12 text-center py-5"><i class="fas fa-car fa-3x text-muted mb-3"></i><h5>No rides available</h5></div>
-                @endforelse
+                    @empty
+                        <div class="col-12 text-center py-5"><i class="fas fa-car fa-3x text-muted mb-3"></i><h5>No rides available</h5></div>
+                    @endforelse
+                </div>
             </div>
-        </div>
 
-        <!-- Bike Panel -->
-        <div id="bikePanel" style="display: none;">
-            <div class="row g-4" id="bikesList">
-                @forelse($availableBikes as $bike)
-                    <div class="col-lg-3 col-md-6 bike-item" 
-                         data-bike-id="{{ $bike->id }}"
-                         data-location="{{ strtolower($bike->pickup_location ?? $bike->location ?? 'campus') }}" 
-                         data-type="{{ strtolower($bike->type) }}">
-                        <div class="bike-card">
-                            <div class="card-img"><i class="fas fa-bicycle fa-3x text-primary"></i></div>
-                            <div class="p-3">
-                                <h5 class="fw-bold">{{ $bike->brand }} {{ $bike->model }}</h5>
-                                <div class="text-muted small">{{ ucfirst($bike->type) }} Bike</div>
-                                <div class="d-flex justify-content-between mt-2">
-                                    <span>Hourly:</span><strong>MWK {{ number_format($bike->price_per_hour, 0) }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-3">
-                                    <span>Daily:</span><strong>MWK {{ number_format($bike->price_per_day, 0) }}</strong>
-                                </div>
-                                <span class="badge bg-success mb-2"><i class="fas fa-check-circle"></i> Available now</span>
-                                <div class="d-grid">
-                                    <button class="book-btn book-action" data-type="bike">Rent now <i class="fas fa-arrow-right ms-1"></i></button>
+            <!-- Bike Panel -->
+            <div id="bikePanel" style="display: none;">
+                <div class="row g-4" id="bikesList">
+                    @forelse($availableBikes as $bike)
+                        <div class="col-lg-3 col-md-6 bike-item" 
+                             data-bike-id="{{ $bike->id }}"
+                             data-location-id="{{ $bike->location_id ?? '' }}"
+                             data-type="{{ strtolower($bike->type) }}">
+                            <div class="bike-card">
+                                <div class="card-img"><i class="fas fa-bicycle fa-3x text-primary"></i></div>
+                                <div class="p-3">
+                                    <h5 class="fw-bold">{{ $bike->brand }} {{ $bike->model }}</h5>
+                                    <div class="text-muted small">{{ ucfirst($bike->type) }} Bike</div>
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <span>Hourly:</span><strong>MWK {{ number_format($bike->price_per_hour, 0) }}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span>Daily:</span><strong>MWK {{ number_format($bike->price_per_day, 0) }}</strong>
+                                    </div>
+                                    <span class="badge bg-success mb-2"><i class="fas fa-check-circle"></i> Available now</span>
+                                    <div class="d-grid">
+                                        <button class="book-btn book-action" data-type="bike">Rent now <i class="fas fa-arrow-right ms-1"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                @empty
-                    <div class="col-12 text-center py-5"><i class="fas fa-bicycle fa-3x text-muted mb-3"></i><h5>No bikes available</h5></div>
-                @endforelse
+                    @empty
+                        <div class="col-12 text-center py-5"><i class="fas fa-bicycle fa-3x text-muted mb-3"></i><h5>No bikes available</h5></div>
+                    @endforelse
+                </div>
             </div>
-        </div>
 
-        <div class="row mt-5">
-            <div class="col-md-4">
-                <div class="info-card">
-                    <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
-                    <h6>Popular Routes</h6>
-                    <p class="small text-muted">MZUNI Main Gate → City Centre (MWK 3,000)<br>Luwinga → MZUNI Library (MWK 1,800)</p>
+            <div class="row mt-5">
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                        <h6>Popular Routes</h6>
+                        <p class="small text-muted">MZUNI Main Gate → Mzuzu Town (MWK 2,500)<br>Luwinga → MZUNI Library (MWK 1,000)</p>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="info-card">
-                    <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
-                    <h6>Safety First</h6>
-                    <p class="small text-muted">All drivers/bikes verified. 24/7 support. Live tracking on every ride.</p>
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                        <h6>Safety First</h6>
+                        <p class="small text-muted">All Vehicles/bikes verified. 24/7 support. Live tracking on every ride and Bikes.</p>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <div class="info-card">
-                    <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
-                    <h6>Estimated Savings</h6>
-                    <p class="small text-muted">Carpool saves up to 70% vs taxi. Bike rentals from MWK 350/hour.</p>
+                <div class="col-md-4">
+                    <div class="info-card">
+                        <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
+                        <h6>Estimated Savings</h6>
+                        <p class="small text-muted">Carpool/Ride Share saves up to 70%. Bike rental of  MWK 100/hour.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -428,24 +428,26 @@
 </section>
 
 <!-- About & Stats -->
-<section id="about" class="py-5 bg-white">
+<section id="about" class="py-5">
     <div class="container">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-6">
-                <span class="badge bg-primary-light text-primary mb-2 px-3 py-2 rounded-pill"><i class="fas fa-leaf me-1"></i> Eco-friendly</span>
-                <h2 class="fw-bold">Unified Transport for Mzuzu University</h2>
-                <p class="lead text-muted">UNITRAS connects Staff(vehicle owners),and passengers in a seamless, affordable and sustainable ecosystem.</p>
-                <button class="btn btn-primary rounded-pill mt-3 px-4" data-bs-toggle="modal" data-bs-target="#loginModal">Join community</button>
-            </div>
-            <div class="col-lg-6">
-                <div class="stat-container text-white p-4 rounded-4 shadow">
-                    <div class="row text-center">
-                        <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['total_vehicles'] ?? 0) }}+</h2><p>Vehicles</p></div>
-                        <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['total_users'] ?? 0) }}+</h2><p>Users</p></div>
-                        <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['completed_trips'] ?? 0) }}+</h2><p>Trips</p></div>
+        <div class="about-section">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-6">
+                    <span class="badge bg-light text-primary mb-2 px-3 py-2 rounded-pill"><i class="fas fa-leaf me-1"></i> Eco-friendly</span>
+                    <h2 class="fw-bold">Unified Transport for Mzuzu University</h2>
+                    <p class="lead">UNITRAS connects Staff (vehicle owners) and passengers in a seamless, affordable and sustainable ecosystem.</p>
+                    <button class="btn btn-primary rounded-pill mt-3 px-4" data-bs-toggle="modal" data-bs-target="#loginModal">Join community</button>
+                </div>
+                <div class="col-lg-6">
+                    <div class="stat-container text-white p-4 rounded-4 shadow">
+                        <div class="row text-center">
+                            <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['total_vehicles'] ?? 0) }}+</h2><p>Vehicles</p></div>
+                            <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['total_users'] ?? 0) }}+</h2><p>Users</p></div>
+                            <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['completed_trips'] ?? 0) }}+</h2><p>Trips</p></div>
+                        </div>
+                        <hr class="bg-white opacity-25">
+                        <p class="mb-0 text-center"><i class="fas fa-map-marked-alt me-1"></i> Covering Mzuzu University main campus, Luwinga,Dunduzu Campus, Mzuzu Town and Chibavi and surrounding areas</p>
                     </div>
-                    <hr class="bg-white opacity-25">
-                    <p class="mb-0 text-center"><i class="fas fa-map-marked-alt me-1"></i> Covering MZUNI, Luwinga, Town, and Chibavi</p>
                 </div>
             </div>
         </div>
@@ -455,7 +457,7 @@
 <!-- CTA -->
 <section class="py-5">
     <div class="container">
-        <div class="bg-gradient rounded-4 p-5 text-center" style="background: linear-gradient(125deg, #eef4fc, #ffffff); border: 1px solid #dce7f0;">
+        <div class="cta-section text-center p-5 rounded-4" style="background: rgba(0,0,0,0.2); backdrop-filter: blur(4px);">
             <h3 class="fw-bold">Ready to share the journey?</h3>
             <p class="mb-4">Join Mzuni UNITRAS today — offer a seat, rent a bike.</p>
             <button class="btn btn-primary rounded-pill px-5" data-bs-toggle="modal" data-bs-target="#loginModal"><i class="fas fa-user-plus"></i> Create free account</button>
@@ -464,15 +466,16 @@
 </section>
 
 <!-- Footer -->
-<footer class="footer pt-5 pb-3">
+<footer class="pt-5 pb-3">
     <div class="container">
         <div class="row">
             <div class="col-md-4 mb-4"><h5><i class="fas fa-bus me-2"></i>Mzuni UNITRAS</h5><p class="text-muted small">Mzuzu University, Luwinga</p></div>
-            <div class="col-md-2 mb-4"><h6>Quick</h6><ul class="list-unstyled small"><li><a href="#services" class="text-muted text-decoration-none">Rides</a></li><li><a href="#services" class="text-muted text-decoration-none">Bikes</a></li><li><a href="#about" class="text-muted text-decoration-none">About</a></li></ul></div>
+            <div class="col-md-2 mb-4"><h6>Quick</h6><ul class="list-unstyled small"><li><a href="#services">Rides</a></li><li><a href="#services">Bikes</a></li><li><a href="#about">About</a></li></ul></div>
             <div class="col-md-3 mb-4"><h6>Contact</h6><p class="text-muted small"><i class="fas fa-phone me-2"></i>+265 990 179 811<br><i class="fas fa-envelope me-2"></i>unitras@mzuni.ac.mw</p></div>
-            <div class="col-md-3 mb-4"><h6>Social</h6><div class="d-flex gap-3"><a href="#" class="text-muted"><i class="fab fa-facebook-f"></i></a><a href="#" class="text-muted"><i class="fab fa-twitter"></i></a><a href="#" class="text-muted"><i class="fab fa-instagram"></i></a></div></div>
+            <div class="col-md-3 mb-4"><h6>Social</h6><div class="d-flex gap-3"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-instagram"></i></a></div></div>
         </div>
-        <hr class="opacity-25"><div class="text-center text-muted small">&copy; {{ date('Y') }} Mzuni UNITRAS — browse freely, book after login.</div>
+        <hr class="opacity-25">
+        <div class="text-center text-muted small">&copy; {{ date('Y') }} Mzuni UNITRAS — browse freely, book after login.</div>
     </div>
 </footer>
 
@@ -496,7 +499,40 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // ---------- LEAFET MAP (unchanged) ----------
+    // ---------- LOCATION MAPPING ----------
+    function buildLocationMap() {
+        const map = {};
+        document.querySelectorAll('#searchFrom option, #searchTo option').forEach(opt => {
+            if (opt.value) {
+                map[opt.textContent.trim().toLowerCase()] = opt.value;
+            }
+        });
+        return map;
+    }
+    const locationNameToId = buildLocationMap();
+
+    function setSelectValue(selectId, locationName) {
+        const select = document.getElementById(selectId);
+        const normalized = locationName.trim().toLowerCase();
+        if (locationNameToId[normalized]) {
+            select.value = locationNameToId[normalized];
+        } else {
+            let found = false;
+            for (const [name, id] of Object.entries(locationNameToId)) {
+                if (name.includes(normalized) || normalized.includes(name)) {
+                    select.value = id;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                select.value = '';
+                alert('Location "' + locationName + '" not in our list. Please select from dropdown.');
+            }
+        }
+    }
+
+    // ---------- LEAFET MAP ----------
     const map = L.map('map').setView([-11.45, 34.02], 14);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
@@ -518,26 +554,11 @@
         }
     }
 
-    async function forwardGeocode(address, callback) {
-        if (!address.trim()) return callback(null, null);
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-            const data = await res.json();
-            if (data.length > 0) {
-                callback(parseFloat(data[0].lat), parseFloat(data[0].lon));
-            } else {
-                callback(null, null);
-            }
-        } catch {
-            callback(null, null);
-        }
-    }
-
     function setFromLocation(lat, lng, name) {
         fromLatLng = { lat, lng };
         if (fromMarker) map.removeLayer(fromMarker);
         fromMarker = L.marker([lat, lng]).addTo(map).bindPopup('Pickup').openPopup();
-        document.getElementById('searchFrom').value = name;
+        setSelectValue('searchFrom', name);
         drawPolyline();
         setTimeout(() => filterBySearch(), 100);
     }
@@ -546,7 +567,7 @@
         toLatLng = { lat, lng };
         if (toMarker) map.removeLayer(toMarker);
         toMarker = L.marker([lat, lng]).addTo(map).bindPopup('Destination').openPopup();
-        document.getElementById('searchTo').value = name;
+        setSelectValue('searchTo', name);
         drawPolyline();
         setTimeout(() => filterBySearch(), 100);
     }
@@ -600,23 +621,7 @@
         }, () => alert('Unable to retrieve your location.'));
     };
 
-    const fromInput = document.getElementById('searchFrom');
-    const toInput = document.getElementById('searchTo');
-
-    function onAddressSelect(input, setFunc) {
-        const address = input.value.trim();
-        if (!address) return;
-        forwardGeocode(address, (lat, lng) => {
-            if (lat && lng) {
-                setFunc(lat, lng, address);
-                map.setView([lat, lng], 15);
-            }
-        });
-    }
-
-    fromInput.addEventListener('change', () => onAddressSelect(fromInput, setFromLocation));
-    toInput.addEventListener('change', () => onAddressSelect(toInput, setToLocation));
-
+    // ---------- TAB SWITCHING ----------
     const tabCarpool = document.getElementById('tabCarpool');
     const tabBike = document.getElementById('tabBike');
     const carpoolPanel = document.getElementById('carpoolPanel');
@@ -649,19 +654,20 @@
     tabCarpool.addEventListener('click', () => switchTab('carpool'));
     tabBike.addEventListener('click', () => switchTab('bike'));
 
+    // ---------- FILTERING ----------
     function filterRides() {
-        const fromVal = fromInput.value.trim().toLowerCase();
-        const toVal = toInput.value.trim().toLowerCase();
+        const fromId = document.getElementById('searchFrom').value;
+        const toId = document.getElementById('searchTo').value;
         const dateVal = searchDate.value;
         const rideItems = document.querySelectorAll('#ridesList .ride-item');
         let visibleCount = 0;
         rideItems.forEach(item => {
-            const fromAttr = (item.getAttribute('data-from') || '').toLowerCase();
-            const toAttr = (item.getAttribute('data-to') || '').toLowerCase();
+            const fromAttr = item.getAttribute('data-from-id') || '';
+            const toAttr = item.getAttribute('data-to-id') || '';
             const itemDate = item.getAttribute('data-date') || '';
             let show = true;
-            if (fromVal && !fromAttr.includes(fromVal)) show = false;
-            if (toVal && !toAttr.includes(toVal)) show = false;
+            if (fromId && fromAttr !== fromId) show = false;
+            if (toId && toAttr !== toId) show = false;
             if (dateVal && itemDate !== dateVal) show = false;
             item.style.display = show ? '' : 'none';
             if (show) visibleCount++;
@@ -670,15 +676,15 @@
     }
 
     function filterBikes() {
-        const locVal = fromInput.value.trim().toLowerCase();
+        const locId = document.getElementById('searchFrom').value;
         const typeVal = bikeTypeFilter.value.toLowerCase();
         const bikeItems = document.querySelectorAll('#bikesList .bike-item');
         let visibleCount = 0;
         bikeItems.forEach(item => {
-            const locationAttr = (item.getAttribute('data-location') || '').toLowerCase();
+            const locationAttr = item.getAttribute('data-location-id') || '';
             const bikeTypeAttr = (item.getAttribute('data-type') || '').toLowerCase();
             let show = true;
-            if (locVal && !locationAttr.includes(locVal)) show = false;
+            if (locId && locationAttr !== locId) show = false;
             if (typeVal && bikeTypeAttr !== typeVal) show = false;
             item.style.display = show ? '' : 'none';
             if (show) visibleCount++;
@@ -717,9 +723,9 @@
         filterBySearch();
     });
 
-    fromInput.addEventListener('change', filterBySearch);
-    toInput.addEventListener('change', () => { if (carpoolPanel.style.display !== 'none') filterRides(); });
-    searchDate.addEventListener('change', () => { if (carpoolPanel.style.display !== 'none') filterRides(); });
+    document.getElementById('searchFrom').addEventListener('change', filterBySearch);
+    document.getElementById('searchTo').addEventListener('change', filterBySearch);
+    searchDate.addEventListener('change', filterBySearch);
     bikeTypeFilter.addEventListener('change', () => { if (bikePanel.style.display !== 'none') filterBikes(); });
 
     document.getElementById('navSearchIcon').addEventListener('click', function(e) {
@@ -727,18 +733,18 @@
         document.getElementById('searchCard').scrollIntoView({ behavior: 'smooth' });
     });
 
-    // ---------- GUEST ACTION HANDLER (REDIRECT TO LOGIN WITH RETURN URL) ----------
+    // ---------- GUEST / AUTH ACTION HANDLING ----------
     const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+
     function redirectToLoginWithReturn(targetUrl) {
-    if (targetUrl) {
-        // Direct redirect with query parameter (no sessionStorage)
-        window.location.href = "{{ route('login') }}?redirect_to=" + encodeURIComponent(targetUrl);
-    } else {
-        loginModal.show();
-    }
+        if (targetUrl) {
+            window.location.href = "{{ route('login') }}?redirect_to=" + encodeURIComponent(targetUrl);
+        } else {
+            loginModal.show();
+        }
     }
 
-    // For "Book ride" and "Rent now" buttons, redirect directly to login (no modal)
+    // For book/rent buttons
     document.querySelectorAll('.book-action').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -751,63 +757,44 @@
                 const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
                 if (bikeId) targetUrl = "/bikes/" + bikeId + "/rent";
             }
-            redirectToLoginWithReturn(targetUrl);
+            @guest
+                redirectToLoginWithReturn(targetUrl);
+            @else
+                if (targetUrl) window.location.href = targetUrl;
+            @endguest
         });
     });
 
-    // For "Offer a ride" and "Share a ride" buttons, show the login modal
-    document.querySelectorAll('#heroOfferBtn, #heroShareBtn, #tabOfferBtn, #tabShareBtn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            loginModal.show();
-        });
-    });
-
-    // For entire card clicks: same logic
+    // Card clicks – same logic
     document.querySelectorAll('.ride-card, .bike-card').forEach(card => {
         card.addEventListener('click', (e) => {
             if (!e.target.closest('.book-action')) {
                 const rideItem = card.closest('.ride-item');
                 if (rideItem) {
                     const rideId = rideItem?.dataset?.rideId;
-                    if (rideId) redirectToLoginWithReturn("/book/" + rideId);
+                    if (rideId) {
+                        @guest
+                            redirectToLoginWithReturn("/book/" + rideId);
+                        @else
+                            window.location.href = "/book/" + rideId;
+                        @endguest
+                    }
                 } else {
                     const bikeId = card.closest('.bike-item')?.dataset?.bikeId;
-                    if (bikeId) redirectToLoginWithReturn("/bikes/" + bikeId + "/rent");
+                    if (bikeId) {
+                        @guest
+                            redirectToLoginWithReturn("/bikes/" + bikeId + "/rent");
+                        @else
+                            window.location.href = "/bikes/" + bikeId + "/rent";
+                        @endguest
+                    }
                 }
             }
         });
     });
 
-    @auth
-    // For logged‑in users, redirect directly (no modal, no login redirect)
-    document.querySelectorAll('.book-action').forEach(btn => {
-        btn.removeEventListener('click', redirectToLoginWithReturn);
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const type = this.getAttribute('data-type');
-            if (type === 'ride') {
-                const rideId = this.closest('.ride-item')?.dataset?.rideId;
-                if (rideId) window.location.href = "/book/" + rideId;
-            } else if (type === 'bike') {
-                const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
-                if (bikeId) window.location.href = "/bikes/" + bikeId + "/rent";
-            }
-        });
-    });
-    document.querySelectorAll('.ride-card, .bike-card').forEach(card => {
-        card.addEventListener('click', function(e) {
-            if (!e.target.closest('.book-action')) {
-                const rideId = this.closest('.ride-item')?.dataset?.rideId;
-                if (rideId) window.location.href = "/book/" + rideId;
-                else {
-                    const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
-                    if (bikeId) window.location.href = "/bikes/" + bikeId + "/rent";
-                }
-            }
-        });
-    });
-    @endauth
+    // Initial filter on page load
+    setTimeout(filterBySearch, 500);
 </script>
 </body>
 </html>

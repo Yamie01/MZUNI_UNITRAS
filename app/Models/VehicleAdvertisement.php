@@ -7,67 +7,92 @@ use Illuminate\Database\Eloquent\Model;
 class VehicleAdvertisement extends Model
 {
     /**
-     * Mass assignable attributes
+     * Mass assignable attributes.
      */
     protected $fillable = [
+        // Foreign keys
         'vehicle_id',
         'owner_id',
+        'from_location_id',      // 🔥 NEW – references locations.id
+        'to_location_id',        // 🔥 NEW – references locations.id
+
+        // General info
         'title',
         'slug',
         'description',
         'ad_type',
         'trip_type',
+
+        // Legacy text locations (kept for fallback; will be removed later)
         'from_location',
         'from_latitude',
         'from_longitude',
         'to_location',
         'to_latitude',
         'to_longitude',
+
+        // Dates & times
         'departure_time',
         'arrival_time',
         'return_departure_time',
         'return_arrival_time',
+
+        // Pricing & seats
         'price',
         'price_per_extra_km',
         'total_seats',
         'available_seats',
         'minimum_seats',
         'maximum_seats',
+
+        // Route & stops
         'route_points',
         'pickup_points',
         'dropoff_points',
+
+        // Status & flags
         'status',
         'is_featured',
-        'view_count',
-        'booking_count',
         'is_recurring',
         'recurring_days',
         'recurring_start_date',
         'recurring_end_date',
+
+        // Policies & extras
         'terms_conditions',
         'cancellation_policy',
         'images',
-        'amenities'
+        'amenities',
+
+        // Statistics
+        'view_count',
+        'booking_count',
+
+        'trip_status',
+        'trip_started_at',
+        'trip_completed_at',
     ];
 
     /**
-     * Attribute casting
+     * Attribute casting.
      */
     protected $casts = [
-        'departure_time' => 'datetime',
-        'arrival_time' => 'datetime',
-        'return_departure_time' => 'datetime',
-        'return_arrival_time' => 'datetime',
-        'price' => 'decimal:2',
-        'price_per_extra_km' => 'decimal:2',
-        'route_points' => 'array',
-        'pickup_points' => 'array',
-        'dropoff_points' => 'array',
-        'recurring_days' => 'array',
-        'images' => 'array',
-        'amenities' => 'array',
-        'is_featured' => 'boolean',
-        'is_recurring' => 'boolean'
+        'departure_time'          => 'datetime',
+        'arrival_time'            => 'datetime',
+        'return_departure_time'   => 'datetime',
+        'return_arrival_time'     => 'datetime',
+        'price'                   => 'decimal:2',
+        'price_per_extra_km'      => 'decimal:2',
+        'route_points'            => 'array',
+        'pickup_points'           => 'array',
+        'dropoff_points'          => 'array',
+        'recurring_days'          => 'array',
+        'images'                  => 'array',
+        'amenities'               => 'array',
+        'is_featured'             => 'boolean',
+        'is_recurring'            => 'boolean',
+        'view_count'              => 'integer',
+        'booking_count'           => 'integer',
     ];
 
     /*
@@ -77,7 +102,7 @@ class VehicleAdvertisement extends Model
     */
 
     /**
-     * Advertisement belongs to a vehicle
+     * Vehicle that owns this advertisement.
      */
     public function vehicle()
     {
@@ -85,7 +110,7 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Advertisement owner
+     * Owner (user) of this advertisement.
      */
     public function owner()
     {
@@ -93,11 +118,27 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Bookings for this advertisement
+     * Bookings made for this advertisement.
      */
     public function bookings()
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Location: pickup point (using new foreign key).
+     */
+    public function fromLocation()
+    {
+        return $this->belongsTo(Location::class, 'from_location_id');
+    }
+
+    /**
+     * Location: destination (using new foreign key).
+     */
+    public function toLocation()
+    {
+        return $this->belongsTo(Location::class, 'to_location_id');
     }
 
     /*
@@ -107,7 +148,7 @@ class VehicleAdvertisement extends Model
     */
 
     /**
-     * Active advertisements
+     * Scope to get only active (approved, future, with seats) advertisements.
      */
     public function scopeActive($query)
     {
@@ -117,7 +158,7 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Ride sharing ads
+     * Scope for ride‑sharing ads.
      */
     public function scopeRideShare($query)
     {
@@ -125,7 +166,7 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Taxi ads
+     * Scope for taxi ads.
      */
     public function scopeTaxi($query)
     {
@@ -133,7 +174,7 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Bus ads
+     * Scope for bus ads.
      */
     public function scopeBus($query)
     {
@@ -141,10 +182,24 @@ class VehicleAdvertisement extends Model
     }
 
     /**
-     * Bike sharing ads
+     * Scope for bike‑sharing ads.
      */
     public function scopeBikeShare($query)
     {
         return $query->where('ad_type', 'bike_share');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors & Mutators (optional)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Get the formatted price.
+     */
+    public function getFormattedPriceAttribute()
+    {
+        return 'MWK ' . number_format($this->price, 0);
     }
 }

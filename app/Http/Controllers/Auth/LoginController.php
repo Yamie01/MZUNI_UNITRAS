@@ -43,11 +43,14 @@ class LoginController extends Controller
                 ]);
             }
 
-            
+            // ✅ Get redirect_to from session or request
+            $redirectTo = session('url.intended') ?? $request->input('redirect_to');
+
             if ($redirectTo && $redirectTo !== '') {
-            // Force debug - see what happens
-            return redirect($redirectTo);
+                session()->forget('url.intended');
+                return redirect($redirectTo);
             }
+
             // Redirect based on user type
             return $this->redirectBasedOnUserType($user);
         }
@@ -73,15 +76,14 @@ class LoginController extends Controller
     /**
      * Redirect users based on their type.
      */
-                protected function redirectBasedOnUserType($user)
-{
-    if ($user->user_type === 'admin') {
-        return redirect()->route('admin.dashboard');
+    protected function redirectBasedOnUserType($user)
+    {
+        if ($user->user_type === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($user->user_type === 'vehicle_owner') {
+            return redirect()->route('vehicle-owner.dashboard');
+        }
+        return redirect()->route('dashboard');
     }
-    if ($user->user_type === 'vehicle_owner') {
-        return redirect()->route('vehicle-owner.dashboard');
-    }
-    return redirect()->route('dashboard');
-}
-
 }

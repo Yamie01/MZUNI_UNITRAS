@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\VehicleOwner;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Vehicle;
 use App\Models\VehicleAdvertisement;
-use App\Models\Booking;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +21,10 @@ class DashboardController extends Controller
 
         // ---- VEHICLES ----
         $vehicles = $user->vehicles()->latest()->get();
-        $pendingVehicles = $vehicles->where('is_approved', false)->count();
+        $pendingVehiclesCount = $vehicles->where('is_approved', false)->count();
+        $activeVehicles = Vehicle::where('owner_id', $ownerId)
+            ->where('is_approved', true)
+            ->count();
 
         // ---- ADVERTISEMENTS ----
         $totalAds = VehicleAdvertisement::where('owner_id', $ownerId)->count();
@@ -30,33 +33,39 @@ class DashboardController extends Controller
             ->where('departure_time', '>', now())
             ->where('available_seats', '>', 0)
             ->get();
+        $activeAdsCount = $activeAds->count();
 
-        // ---- BOOKINGS & EARNINGS ----
+        // ---- RECENT ADS ----
+        $recentAds = VehicleAdvertisement::where('owner_id', $ownerId)
+            ->latest()
+            ->take(3)
+            ->get();
+
+        // ---- RECENT VEHICLES ----
+        $recentVehicles = Vehicle::where('owner_id', $ownerId)
+            ->latest()
+            ->take(3)
+            ->get();
+
+        // ---- BOOKINGS ----
         $bookingsQuery = Booking::whereHas('advertisement', function ($query) use ($ownerId) {
             $query->where('owner_id', $ownerId);
         });
 
         $totalBookings = $bookingsQuery->count();
         $pendingBookings = $bookingsQuery->clone()->where('status', 'pending')->count();
-        $completedBookings = $bookingsQuery->clone()->where('status', 'completed');
 
-        $earnings = $completedBookings->sum('total_price');
-        $completedTrips = $completedBookings->count();
-
-        // ---- RECENT BOOKINGS (last 5) ----
-        $recentBookings = $bookingsQuery->clone()
-            ->with(['user', 'advertisement'])
-            ->latest()
-            ->take(5)
-            ->get();
+        // ---- EARNINGS (owner_earnings from completed trips) ----
+        $completedBookingsQuery = $bookingsQuery->clone()->where('trip_status', 'completed');
+        $completedTrips = $completedBookingsQuery->count();
+        $totalEarnings = $completedBookingsQuery->sum('owner_earnings');
 
         // ---- MONTHLY EARNINGS CHART (current year) ----
         $monthlyEarnings = $bookingsQuery->clone()
-            ->where('status', 'completed')
-            ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(total_price) as total'))
+            ->where('trip_status', 'completed')
+            ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(owner_earnings) as total'))
             ->whereYear('created_at', date('Y'))
             ->groupBy('month')
-            ->get()
             ->pluck('total', 'month')
             ->toArray();
 
@@ -68,50 +77,43 @@ class DashboardController extends Controller
         }
         ksort($monthlyEarnings);
 
-        // ---- STATS ARRAY (for easy access in view) ----
-        $stats = [
-            'vehicles' => $vehicles->count(),
-            'pending_vehicles' => $pendingVehicles,
-            'total_ads' => $totalAds,
-            'active_ads_count' => $activeAds->count(),
-            'total_bookings' => $totalBookings,
-            'pending_bookings' => $pendingBookings,
-            'earnings' => $earnings,
-            'completed_trips' => $completedTrips,
-            'earnings_growth' => 0, // Could be calculated from previous month if needed
-        ];
+        // ---- RECENT BOOKINGS (last 5) ----
+        $recentBookings = $bookingsQuery->clone()
+            ->with(['user', 'advertisement'])
+            ->latest()
+            ->take(5)
+            ->get();
 
-        // Extract commonly used variables for the view (to avoid undefined variable errors)
-        $vehiclesCount = $stats['vehicles'];
-        $pendingVehiclesCount = $stats['pending_vehicles'];
-        $totalAdsCount = $stats['total_ads'];
-        $activeAdsCount = $stats['active_ads_count'];
-        $totalBookingsCount = $stats['total_bookings'];
-        $pendingBookingsCount = $stats['pending_bookings'];
-        $earningsAmount = $stats['earnings'];
-        $completedTripsCount = $stats['completed_trips'];
+        // ---- STATS ARRAY (for easy access) ----
+        $stats = [
+            'vehicles'           => $vehicles->count(),
+            'pending_vehicles'   => $pendingVehiclesCount,
+            'total_ads'          => $totalAds,
+            'active_ads_count'   => $activeAdsCount,
+            'total_bookings'     => $totalBookings,
+            'pending_bookings'   => $pendingBookings,
+            'earnings'           => $totalEarnings,
+            'completed_trips'    => $completedTrips,
+            'earnings_growth'    => 0, // Can be calculated later
+        ];
 
         return view('vehicle-owner.dashboard', compact(
             'user',
             'vehicles',
+            'activeVehicles',
             'activeAds',
+            'recentVehicles',
+            'recentAds',
             'recentBookings',
             'monthlyEarnings',
             'stats',
-            // Explicitly include all scalar variables that the view might use
-            'vehiclesCount',
-            'pendingVehiclesCount',
-            'totalAdsCount',
-            'activeAdsCount',
-            'totalBookingsCount',
-            'pendingBookingsCount',
-            'earningsAmount',
-            'completedTripsCount',
-            // Also keep original names for backward compatibility
-            'totalBookings',
+            'totalEarnings',
+            'completedTrips',
             'pendingBookings',
-            'earnings',
-            'completedTrips'
+            'activeAdsCount',
+            'totalBookings',
+            'totalAds',
+            'pendingVehiclesCount'
         ));
     }
 }

@@ -9,7 +9,6 @@ use App\Models\VehicleAdvertisement;
 use App\Models\Bike;
 use App\Models\Review;
 use App\Models\Message;
-use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -19,7 +18,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // ---------- AVAILABLE RIDES & BIKES ----------
-        $availableRides = VehicleAdvertisement::with(['vehicle', 'owner'])
+        $availableRides = VehicleAdvertisement::with(['vehicle', 'owner', 'fromLocation', 'toLocation'])
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
             ->where('available_seats', '>', 0)
@@ -53,17 +52,26 @@ class DashboardController extends Controller
 
         $recentRentals = $recentBikeRentals; // alias for blade
 
-        // ---------- PENDING ACTIONS ----------
-        // TODO: Once you have a reviews table with booking_id and user_id, replace this with:
-        // $pendingReviews = Booking::where('user_id', $user->id)
-        //     ->where('status', 'completed')
-        //     ->whereDoesntHave('reviews', fn($q) => $q->where('user_id', $user->id))
-        //     ->count();
+        // ---------- 🚀 ACTIVE RENTAL (with fallback timestamps) ----------
+        $activeRental = BikeRental::with(['bike'])
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['active', 'rented'])
+            ->first();
 
-        // Safe fallback for now (no review system yet)
+        // If timestamps are missing, compute them from created_at and duration
+        if ($activeRental) {
+            if (is_null($activeRental->start_time) && $activeRental->created_at) {
+                $activeRental->start_time = $activeRental->created_at;
+            }
+            if (is_null($activeRental->expected_return_time) && $activeRental->created_at && $activeRental->duration) {
+                $hours = $activeRental->duration_type == 'daily' ? $activeRental->duration * 24 : $activeRental->duration;
+                $activeRental->expected_return_time = $activeRental->created_at->copy()->addHours($hours);
+            }
+        }
+
+        // ---------- PENDING ACTIONS ----------
         $pendingReviews = 0;
 
-        // Unread messages (if Message model exists)
         $unreadMessages = 0;
         if (class_exists(\App\Models\Message::class)) {
             $unreadMessages = Message::where('user_id', $user->id)
@@ -71,7 +79,6 @@ class DashboardController extends Controller
                 ->count();
         }
 
-        // Pending payments (bookings + rentals with status 'pending')
         $pendingPayments = Booking::where('user_id', $user->id)
             ->where('status', 'pending')
             ->count() + BikeRental::where('user_id', $user->id)
@@ -79,7 +86,7 @@ class DashboardController extends Controller
             ->count();
 
         // ---------- PROFILE STRENGTH ----------
-        $profileFields = ['phone', 'address', 'profile_photo']; // adjust to your users table columns
+        $profileFields = ['phone', 'address', 'profile_photo'];
         $missing = 0;
         foreach ($profileFields as $field) {
             if (empty($user->$field)) $missing++;
@@ -99,12 +106,26 @@ class DashboardController extends Controller
             ->latest()
             ->paginate(10);
 
-        // ---------- STATISTICS ----------
-        $totalRides = Booking::where('user_id', $user->id)->count();
-        $totalSpent = Booking::where('user_id', $user->id)
+        // ---------- SPENDING STATISTICS ----------
+        $totalSpentOnRides = Booking::where('user_id', $user->id)
             ->where('status', 'completed')
             ->sum('total_price');
-        $totalBikeRentals = BikeRental::where('user_id', $user->id)->count();
+
+        $totalSpentOnRentals = BikeRental::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        $totalSpent = $totalSpentOnRides + $totalSpentOnRentals;
+
+        $totalRides = Booking::where('user_id', $user->id)->count();
+        $totalRentals = BikeRental::where('user_id', $user->id)->count();
+
+        $moneySaved = Booking::where('user_id', $user->id)
+            ->where('booking_type', 'subscription')
+            ->sum('subtotal') ?? 0;
+
+        // ---------- OLD STATISTICS (for backward compatibility) ----------
+        $totalBikeRentals = $totalRentals;
 
         return view('user.dashboard', compact(
             'availableRides',
@@ -115,6 +136,7 @@ class DashboardController extends Controller
             'recentBookings',
             'recentBikeRentals',
             'recentRentals',
+            'activeRental',
             'allBookings',
             'allBikeRentals',
             'totalRides',
@@ -124,7 +146,8 @@ class DashboardController extends Controller
             'unreadMessages',
             'pendingPayments',
             'profileCompletion',
-            'missingFields'
+            'missingFields',
+            'moneySaved'
         ));
     }
 }

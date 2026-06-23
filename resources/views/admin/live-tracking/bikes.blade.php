@@ -204,7 +204,7 @@
         const now = Date.now();
         Object.keys(bikeData).forEach(bikeId => {
             if (bikeData[bikeId] && (now - bikeData[bikeId].lastUpdate) > 300000) {
-                // Marker is stale, change color or remove?
+                // Marker is stale, change color to gray
                 if (markers[bikeId]) {
                     const grayIcon = L.divIcon({
                         className: 'bike-marker',
@@ -237,7 +237,7 @@
     
     // Function to refresh bike locations from API
     function refreshBikeLocations() {
-      fetch('/admin/active-bike-rentals')
+        fetch('/admin/active-bike-rentals')
             .then(response => response.json())
             .then(data => {
                 data.forEach(bike => {

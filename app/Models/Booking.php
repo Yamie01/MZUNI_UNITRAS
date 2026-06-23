@@ -47,6 +47,9 @@ class Booking extends Model
         'owner_earnings',
         'is_paid',
         'payment_date',
+        'is_paid',
+        'payment_method',
+        'paid_at',
 ];
 
     /**
@@ -301,6 +304,10 @@ class Booking extends Model
         return "{$prefix}-{$date}-{$random}";
     }
 
+    public function payout()
+{
+    return $this->hasOne(Payout::class);
+}
     /**
      * Boot the model.
      */
