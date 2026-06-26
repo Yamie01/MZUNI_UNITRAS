@@ -50,6 +50,12 @@ class Subscription extends Model
             ->count();
     }
     
+    // ✅ ADD THIS MISSING METHOD
+    public function getRemainingTodaysRides()
+    {
+        return $this->getDailyLimit() - $this->getTodaysUsageCount();
+    }
+    
     public function canBookRide()
     {
         if (!$this->isActive()) return false;

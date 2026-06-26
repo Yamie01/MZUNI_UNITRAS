@@ -127,6 +127,124 @@ if ($subscription && $subscription->canBookRide()) {
 }
     }
 
+    public function store(Request $request, VehicleAdvertisement $advertisement)
+    {
+        // Validate request
+        $request->validate([
+            'seats' => 'required|integer|min:1|max:' . $advertisement->available_seats,
+            'pickup_point' => 'required|string',
+            'dropoff_point' => 'required|string',
+            'special_requests' => 'nullable|string',
+        ]);
+
+        // ✅ Check if user has an active subscription
+        $subscription = Subscription::where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->where('end_date', '>', now())
+            ->first();
+
+        $totalPrice = $advertisement->price * $request->seats;
+        $isFreeBooking = false;
+        $bookingType = 'paid';
+        $status = 'pending';
+
+        if ($subscription && $subscription->canBookRide()) {
+            // ✅ FREE booking using subscription
+            $isFreeBooking = true;
+            $totalPrice = 0;
+            $bookingType = 'subscription';
+            $status = 'confirmed';  // Auto-confirm, no payment needed
+        }
+
+        DB::transaction(function () use ($request, $advertisement, $totalPrice, $bookingType, $status, $isFreeBooking, $subscription, &$booking) {
+            $booking = Booking::create([
+                'booking_reference' => 'BK-' . strtoupper(uniqid()),
+                'user_id' => Auth::id(),
+                'vehicle_advertisement_id' => $advertisement->id,
+                'vehicle_id' => $advertisement->vehicle_id,
+                'number_of_seats' => $request->seats,
+                'price_per_seat' => $advertisement->price,
+                'subtotal' => $totalPrice,
+                'total_price' => $totalPrice,
+                'platform_fee' => $totalPrice * 0.20,
+                'owner_earnings' => $totalPrice * 0.80,
+                'is_paid' => $isFreeBooking,
+                'status' => $status,
+                'pickup_point' => $request->pickup_point,
+                'dropoff_point' => $request->dropoff_point,
+                'special_requests' => $request->special_requests,
+                'booking_time' => now(),
+                'trip_status' => 'pending',
+                'booking_type' => $bookingType,
+            ]);
+
+            // Reduce available seats
+            $advertisement->decrement('available_seats', $request->seats);
+
+            // Record subscription usage if free
+            if ($isFreeBooking && $subscription) {
+                SubscriptionUsage::create([
+                    'subscription_id' => $subscription->id,
+                    'booking_id' => $booking->id,
+                    'usage_date' => now(),
+                ]);
+            }
+        });
+
+        // ✅ If free booking, redirect to success page
+        if ($isFreeBooking && $subscription) {
+            $remainingToday = $subscription->getRemainingTodaysRides();
+            return redirect()->route('user.bookings.show', $booking)
+                ->with('success', "✅ Free booking confirmed using your {$subscription->type} pass! You have {$remainingToday} free ride(s) left today.");
+        }
+
+        // ✅ Paid booking - redirect to payment
+        return redirect()->route('payment.initiate', $booking)
+            ->with('info', 'Please complete payment to confirm your booking.');
+    }
+
+    /**
+     * Check subscription eligibility via AJAX (for real-time UI updates)
+     */
+    public function checkSubscriptionEligibility(Request $request, VehicleAdvertisement $advertisement)
+    {
+        $subscription = Subscription::where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->where('end_date', '>', now())
+            ->first();
+
+        $seats = $request->input('seats', 1);
+        $totalPrice = $advertisement->price * $seats;
+
+        if (!$subscription) {
+            return response()->json([
+                'eligible' => false,
+                'reason' => 'No active subscription',
+                'total_price' => $totalPrice,
+                'requires_payment' => true,
+            ]);
+        }
+
+        if (!$subscription->canBookRide()) {
+            return response()->json([
+                'eligible' => false,
+                'reason' => 'Daily ride limit reached',
+                'total_price' => $totalPrice,
+                'limit' => $subscription->getDailyLimit(),
+                'used' => $subscription->getTodaysUsageCount(),
+                'requires_payment' => true,
+            ]);
+        }
+
+        return response()->json([
+            'eligible' => true,
+            'reason' => 'Free with your subscription!',
+            'total_price' => 0,
+            'subscription_type' => $subscription->type,
+            'remaining_today' => $subscription->getRemainingTodaysRides(),
+            'requires_payment' => false,
+        ]);
+    }
     /**
      * Display user's bookings.
      */

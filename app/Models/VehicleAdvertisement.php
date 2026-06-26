@@ -157,6 +157,7 @@ class VehicleAdvertisement extends Model
                      ->where('available_seats', '>', 0);
     }
 
+
     /**
      * Scope for ride‑sharing ads.
      */
@@ -189,6 +190,19 @@ class VehicleAdvertisement extends Model
         return $query->where('ad_type', 'bike_share');
     }
 
+    /**
+ * Scope a query to only include available rides.
+ */
+public function scopeAvailable($query)
+{
+    return $query->where('status', 'approved')
+        ->where('departure_time', '>', now())
+        ->where('available_seats', '>', 0)
+        ->where(function($q) {
+            $q->whereNull('trip_status')
+              ->orWhere('trip_status', 'scheduled');
+        });
+}
     /*
     |--------------------------------------------------------------------------
     | Accessors & Mutators (optional)

@@ -41,11 +41,21 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             
             // Security
-            \App\Http\Middleware\VerifyCsrfToken::class,
+            //\App\Http\Middleware\VerifyCsrfToken::class,
             
             // Route binding
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
+
+        // ✅ NEW: Webhook group – no CSRF, no session
+    'webhook' => [
+        \App\Http\Middleware\EncryptCookies::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        // CSRF middleware is NOT included
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
+    ],
 
         'api' => [
             // Rate limiting

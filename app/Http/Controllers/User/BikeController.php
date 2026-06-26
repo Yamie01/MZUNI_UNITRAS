@@ -66,6 +66,15 @@ class BikeController extends Controller
      */
     public function processRent(Request $request, Bike $bike)
     {
+        $user = auth()->user();
+
+        // ✅ Block rental if user has unpaid late fees
+        if ($user->hasUnpaidLateFee()) {
+            $totalLateFee = $user->getUnpaidLateFeeTotal();
+            return redirect()->route('user.bike-rentals.index')
+                ->with('error', 'You have an unpaid late fee of MWK ' . number_format($totalLateFee, 2) . '. Please pay it before renting another bike.');
+        }
+
         // Validate the request
         $request->validate([
             'duration_type' => 'required|in:hourly,daily',
@@ -74,7 +83,7 @@ class BikeController extends Controller
             'start_time' => 'required|date|after:now',
         ]);
 
-        // Calculate rate based on duration type - FIXED: define the $rate variable
+        // Calculate rate based on duration type
         if ($request->duration_type === 'hourly') {
             $rate = $bike->price_per_hour;
         } else {

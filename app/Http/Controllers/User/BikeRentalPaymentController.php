@@ -103,20 +103,29 @@ class BikeRentalPaymentController extends Controller
     public function handleReturn(Request $request)
     {
         $rentalId = session('pending_bike_rental_id');
+        
         if (!$rentalId) {
             return redirect()->route('user.bike-rentals.index')
                 ->with('error', 'Payment session expired.');
         }
 
         $rental = BikeRental::find($rentalId);
+        
         if (!$rental) {
             return redirect()->route('user.bike-rentals.index')
                 ->with('error', 'Rental not found.');
         }
 
-        $reference = $request->query('reference');
+        if ($rental->is_paid) {
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('success', 'Payment already completed.');
+        }
+
+        $reference = $request->query('reference') ?? $request->query('tx_ref');
+        
         if ($reference) {
             $verification = $this->paychangu->verifyTransaction($reference);
+            
             if ($verification['success'] && $verification['status'] === 'paid') {
                 return $this->processSuccessfulPayment($rental, $reference);
             }

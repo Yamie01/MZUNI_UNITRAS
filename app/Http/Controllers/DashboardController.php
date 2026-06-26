@@ -49,10 +49,7 @@ class DashboardController extends Controller
         $totalSpent = Booking::where('user_id', $user->id)
             ->where('status', 'completed')
             ->sum('total_price');
-
-        // If you need locations in the dashboard, you can add:
-        // $locations = Location::orderBy('name')->get();
-
+        
         return view('user.dashboard', compact(
             'availableRides',
             'availableBikes',

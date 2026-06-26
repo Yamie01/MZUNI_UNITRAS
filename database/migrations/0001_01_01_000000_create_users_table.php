@@ -17,7 +17,7 @@ return new class extends Migration
 
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone')->nullable()->after('email');
+            $table->string('phone')->nullable();          // ✅ Only one phone column, removed `->after('email')`
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
 
@@ -28,7 +28,7 @@ return new class extends Migration
                 'admin'
             ])->default('student');
 
-            $table->string('phone')->nullable();
+            // ✅ Removed duplicate phone column
             $table->string('avatar')->nullable();
             $table->string('department')->nullable();
             $table->string('driving_license')->nullable();

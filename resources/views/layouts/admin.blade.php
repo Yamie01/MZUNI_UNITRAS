@@ -270,6 +270,11 @@
                     <span>Live Tracking</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.analytics') }}">
+                    <i class="fas fa-chart-line me-2"></i> Analytics
+                </a>
+            </li>
             <li class="nav-divider"></li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('dashboard') }}">
@@ -288,9 +293,7 @@
     </div>
     
     <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">@csrf</form>
-    <div class="sidebar-footer">
-            <small>&copy; {{ date('Y') }} Mzuzu University</small>
-        </div>
+    
     <!-- Top Navbar -->
     <nav class="navbar-top">
         <div class="d-flex justify-content-between align-items-center">
@@ -360,4 +363,7 @@
     </script>
     @stack('scripts')
 </body>
+<div class="sidebar-footer">
+            <small>&copy; {{ date('Y') }} Mzuzu University</small>
+        </div>
 </html>

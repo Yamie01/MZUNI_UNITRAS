@@ -62,24 +62,29 @@ class AdvertisementController extends Controller
     /**
      * Show the form to create a new advertisement.
      */
-    public function create()
-    {
-        $user = Auth::user();
-
-        $vehicles = $user->vehicles()
-            ->where('is_approved', true)
-            ->where('status', 'available')
-            ->get();
-
-        if ($vehicles->isEmpty()) {
-            return redirect()->route('vehicle-owner.vehicles.index')
-                ->with('error', 'You need at least one approved vehicle to create an advertisement.');
-        }
-
-        $locations = Location::orderBy('name')->get();
-
-        return view('vehicle-owner.advertisements.create', compact('vehicles', 'locations'));
+    /**
+ * Show the form for creating a new advertisement.
+ */
+public function create()
+{
+    $user = Auth::user();
+    
+    // Get only approved vehicles
+    $vehicles = $user->vehicles()
+        ->where('is_approved', true)
+        ->where('status', 'available')
+        ->get();
+    
+    if ($vehicles->isEmpty()) {
+        return redirect()->route('vehicle-owner.vehicles.index')
+            ->with('error', 'You need at least one approved vehicle to create an advertisement.');
     }
+    
+    // Fetch locations for dropdown
+    $locations = \App\Models\Location::orderBy('name')->get();
+    
+    return view('vehicle-owner.advertisements.create', compact('vehicles', 'locations'));
+}
 
     /**
      * Store a new advertisement.

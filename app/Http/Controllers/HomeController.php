@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Bike;
 use App\Models\Booking;
+use App\Models\Location;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAdvertisement;
-use App\Models\Location;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -17,7 +17,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        // 1. Available rides (with location relationships)
+        // 1. Available rides (with location relationships, NOT started/completed)
         $availableVehicles = VehicleAdvertisement::with([
             'vehicle',
             'owner',
@@ -27,6 +27,10 @@ class HomeController extends Controller
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
             ->where('available_seats', '>', 0)
+            ->where(function ($query) {
+                $query->whereNull('trip_status')
+                    ->orWhere('trip_status', 'scheduled');
+            })
             ->orderBy('departure_time', 'asc')
             ->limit(6)
             ->get();
@@ -41,10 +45,10 @@ class HomeController extends Controller
         $stats = [
             'total_vehicles' => Vehicle::where('is_approved', true)->count(),
             'total_users'    => User::count(),
-            'completed_trips'=> Booking::where('status', 'completed')->count(),
+            'completed_trips' => Booking::where('status', 'completed')->count(),
         ];
 
-        // 4. Locations for dropdowns (from the database)
+        // 4. Locations for dropdowns
         $locations = Location::orderBy('name')->get();
 
         return view('welcome', compact('availableVehicles', 'availableBikes', 'stats', 'locations'));
@@ -80,13 +84,16 @@ class HomeController extends Controller
         $query = VehicleAdvertisement::with(['vehicle', 'owner', 'fromLocation', 'toLocation'])
             ->where('status', 'approved')
             ->where('departure_time', '>', now())
-            ->where('available_seats', '>', 0);
+            ->where('available_seats', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('trip_status')
+                    ->orWhere('trip_status', 'scheduled');
+            });
 
         // Search by location IDs (if provided)
         if ($request->filled('from_location_id')) {
             $query->where('from_location_id', $request->from_location_id);
         } elseif ($request->filled('from')) {
-            // Fallback to text search
             $query->where('from_location', 'like', '%' . $request->from . '%');
         }
 
@@ -123,5 +130,21 @@ class HomeController extends Controller
     public function contact()
     {
         return view('pages.contact');
+    }
+
+    /**
+     * Show terms and conditions page.
+     */
+    public function terms()
+    {
+        return view('pages.terms');
+    }
+
+    /**
+     * Show privacy policy page.
+     */
+    public function privacy()
+    {
+        return view('pages.privacy');
     }
 }

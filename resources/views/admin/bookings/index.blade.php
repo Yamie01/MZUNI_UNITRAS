@@ -3,61 +3,83 @@
 @section('title', 'Manage Bookings - Mzuni UNITRAS')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3"><i class="fas fa-calendar-check text-primary me-2"></i>Manage Bookings</h1>
+        <div>
+            <a href="{{ route('admin.bookings.export') }}" class="btn btn-success">
+                <i class="fas fa-file-export me-2"></i>Export
+            </a>
+        </div>
+    </div>
+
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-2">
-            <div class="card text-white bg-primary">
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6>Total Bookings</h6>
-                    <h4>{{ $stats['total'] }}</h4>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Bookings</h6>
+                            <h2 class="mb-0">{{ number_format($stats['total'] ?? 0) }}</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-calendar-check text-primary fa-2x"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
-            <div class="card text-white bg-warning">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6>Pending</h6>
-                    <h4>{{ $stats['pending'] }}</h4>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Pending</h6>
+                            <h2 class="mb-0">{{ number_format($stats['pending'] ?? 0) }}</h2>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-hourglass-half text-warning fa-2x"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
-            <div class="card text-white bg-success">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6>Confirmed</h6>
-                    <h4>{{ $stats['confirmed'] }}</h4>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Confirmed</h6>
+                            <h2 class="mb-0">{{ number_format($stats['confirmed'] ?? 0) }}</h2>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-check-circle text-info fa-2x"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-2">
-            <div class="card text-white bg-info">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6>Completed</h6>
-                    <h4>{{ $stats['completed'] }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-white bg-danger">
-                <div class="card-body">
-                    <h6>Cancelled</h6>
-                    <h4>{{ $stats['cancelled'] }}</h4>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="card text-white bg-dark">
-                <div class="card-body">
-                    <h6>Revenue</h6>
-                    <h4>MWK {{ number_format($stats['total_revenue'], 2) }}</h4>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Completed</h6>
+                            <h2 class="mb-0">{{ number_format($stats['completed'] ?? 0) }}</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-flag-checkered text-success fa-2x"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="card mb-4">
+    <div class="card shadow-sm mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('admin.bookings.index') }}" class="row g-3">
                 <div class="col-md-3">
@@ -79,11 +101,13 @@
                     <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}" placeholder="To Date">
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-1"></i> Filter
+                    </button>
                 </div>
                 <div class="col-md-1">
-                    <a href="{{ route('admin.bookings.export') }}" class="btn btn-success w-100">
-                        <i class="fas fa-download"></i>
+                    <a href="{{ route('admin.bookings.export') }}" class="btn btn-success w-100" title="Export">
+                        <i class="fas fa-file-export"></i>
                     </a>
                 </div>
             </form>
@@ -91,59 +115,62 @@
     </div>
 
     <!-- Bookings Table -->
-    <div class="card">
-        <div class="card-header">
-            <h5>All Bookings</h5>
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="fas fa-list me-2"></i>All Bookings</h6>
+            <span class="badge bg-primary">{{ $bookings->total() }}</span>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead class="table-dark">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>ID</th>
-                            <th>Customer</th>
-                            <th>Ride</th>
+                            <th>#</th>
+                            <th>Reference</th>
+                            <th>Passenger</th>
                             <th>Route</th>
                             <th>Seats</th>
-                            <th>Total Price</th>
+                            <th>Amount</th>
                             <th>Status</th>
-                            <th>Booking Date</th>
+                            <th>Date</th>
                             <th>Actions</th>
-                            <th>Trip Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($bookings as $booking)
                         <tr>
-                            <td>#{{ $booking->id }}</td>
+                            <td>{{ $booking->id }}</td>
                             <td>
-                                <strong>{{ $booking->user->name ?? 'N/A' }}</strong><br>
-                                <small class="text-muted">{{ $booking->user->email ?? 'N/A' }}</small>
+                                <span class="badge bg-secondary">{{ $booking->booking_reference ?? 'N/A' }}</span>
                             </td>
-                            <td>{{ Str::limit($booking->advertisement->title ?? 'N/A', 30) }}</td>
                             <td>
-                                {{ $booking->advertisement->from_location ?? 'N/A' }} → 
-                                {{ $booking->advertisement->to_location ?? 'N/A' }}
+                                <strong>{{ $booking->user->name ?? 'N/A' }}</strong>
+                                <br><small class="text-muted">{{ $booking->user->email ?? 'N/A' }}</small>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ $booking->pickup_point ?? $booking->advertisement->from_location ?? 'N/A' }}
+                                    <i class="fas fa-arrow-right text-muted mx-1"></i>
+                                    {{ $booking->dropoff_point ?? $booking->advertisement->to_location ?? 'N/A' }}
+                                </small>
                             </td>
                             <td>{{ $booking->number_of_seats }}</td>
-                            <td>MWK {{ number_format($booking->total_price, 2) }}</td>
+                            <td><strong>MWK {{ number_format($booking->total_price ?? 0, 0) }}</strong></td>
                             <td>
-                                @if($booking->status == 'confirmed')
-                                    <span class="badge bg-success">Confirmed</span>
-                                @elseif($booking->status == 'pending')
-                                    <span class="badge bg-warning">Pending</span>
+                                @if($booking->status == 'pending')
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                @elseif($booking->status == 'confirmed')
+                                    <span class="badge bg-info">Confirmed</span>
                                 @elseif($booking->status == 'completed')
-                                    <span class="badge bg-info">Completed</span>
+                                    <span class="badge bg-success">Completed</span>
                                 @elseif($booking->status == 'cancelled')
                                     <span class="badge bg-danger">Cancelled</span>
+                                @else
+                                    <span class="badge bg-secondary">{{ ucfirst($booking->status ?? 'N/A') }}</span>
                                 @endif
-                            </td>
-                            <td>{{ $booking->created_at->format('d M Y H:i') }}</td>
-                            
-                            <td>
+                                <br>
                                 @if($booking->trip_status == 'completed')
-                                    <span class="badge bg-success">Completed</span>
-                                    <br><small>{{ $booking->trip_completed_at->format('d M H:i') }}</small>
+                                    <span class="badge bg-success">Trip Completed</span>
                                 @elseif($booking->trip_status == 'in_progress')
                                     <span class="badge bg-warning">In Progress</span>
                                 @else
@@ -151,12 +178,16 @@
                                 @endif
                             </td>
                             <td>
-                               <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-info">                                   <i class="fas fa-eye"></i>
+                                {{ $booking->created_at?->format('d M Y H:i') ?? 'N/A' }}
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.bookings.show', $booking) }}" class="btn btn-sm btn-info" title="View">
+                                    <i class="fas fa-eye"></i>
                                 </a>
-                                <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this booking?')">
+                                <form action="{{ route('admin.bookings.destroy', $booking) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this booking?')" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -164,14 +195,21 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center">No bookings found.</td>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="fas fa-calendar-times fa-2x d-block mb-2"></i>
+                                No bookings found.
+                            </td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+        </div>
+        @if($bookings->hasPages())
+        <div class="card-footer bg-white">
             {{ $bookings->links() }}
         </div>
+        @endif
     </div>
 </div>
 @endsection

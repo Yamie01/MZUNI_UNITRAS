@@ -7,6 +7,7 @@ use App\Models\BikeRental;
 use App\Models\Payment;
 use App\Models\Payout;
 use App\Services\PayChanguService;
+use App\Services\PayChanguPayoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -86,7 +87,7 @@ class PaymentController extends Controller
     /**
      * Initiate payment for a bike rental.
      */
-    public function initiateRental(BikeRental $rental)
+    public function initiateRental(Request $request, BikeRental $rental)
     {
         if ($rental->user_id !== auth()->id()) {
             abort(403);
@@ -131,13 +132,12 @@ class PaymentController extends Controller
 
         $response = $this->paychangu->initializePayment($paymentData);
 
-        if ($response['success']) {
+        if ($response['success'] ?? false) {
             session(['pending_rental_id' => $rental->id]);
             session(['pending_rental_tx_ref' => $txRef]);
             return redirect($response['checkout_url']);
         } else {
-            Log::error('PayChangu init failed for rental', $response);
-            return back()->with('error', $response['message'] ?? 'Unable to initiate payment');
+            return back()->with('error', $response['message'] ?? 'Payment initiation failed');
         }
     }
 
@@ -156,7 +156,7 @@ class PaymentController extends Controller
             return $this->initiate($booking);
         } elseif ($request->rental_id) {
             $rental = BikeRental::find($request->rental_id);
-            return $this->initiateRental($rental);
+            return $this->initiateRental($request, $rental);
         }
 
         return response()->json(['error' => 'No booking or rental ID provided'], 400);
@@ -182,6 +182,7 @@ class PaymentController extends Controller
                     $verification = $this->paychangu->verifyTransaction($reference);
                     if ($verification['success'] && $verification['status'] === 'paid') {
                         $this->processSuccessfulBookingPayment($booking, $reference);
+                        $this->processAutoPayout($booking);
                         return redirect()->route('user.bookings.show', $booking)
                             ->with('success', 'Payment successful! Booking confirmed.');
                     }
@@ -219,11 +220,11 @@ class PaymentController extends Controller
     }
 
     // ============================================================
-    // 3. WEBHOOK (with Auto-Payout)
+    // 3. WEBHOOK
     // ============================================================
 
     /**
-     * Handle PayChangu webhook with signature verification and auto-payout.
+     * Handle PayChangu webhook.
      */
     public function handleWebhook(Request $request)
     {
@@ -231,17 +232,13 @@ class PaymentController extends Controller
             $payload = $request->getContent();
             Log::info('Webhook raw payload received', ['payload' => $payload]);
 
-            // Verify signature (if configured)
             $signature = $request->header('Signature') ?: $request->header('signature') ?: $request->header('X-Signature');
             $webhookSecret = config('paychangu.webhook_secret');
 
             if ($webhookSecret) {
                 $computedSignature = hash_hmac('sha256', $payload, $webhookSecret);
                 if ($computedSignature !== $signature) {
-                    Log::warning('Invalid webhook signature', [
-                        'received' => $signature,
-                        'computed' => $computedSignature,
-                    ]);
+                    Log::warning('Invalid webhook signature');
                     return response()->json(['error' => 'Invalid signature'], 401);
                 }
             }
@@ -261,7 +258,6 @@ class PaymentController extends Controller
                     $booking = Booking::find($bookingId);
                     if ($booking && !$booking->is_paid) {
                         $this->processSuccessfulBookingPayment($booking, $reference);
-                        // 🔥 Auto-payout to vehicle owner
                         $this->processAutoPayout($booking);
                     }
                 }
@@ -282,63 +278,11 @@ class PaymentController extends Controller
     }
 
     // ============================================================
-    // 4. MANUAL VERIFICATION (Fallback)
+    // 4. MANUAL VERIFICATION (Fallback for Local Testing)
     // ============================================================
 
     /**
-     * Manual verification for bookings (admin/owner fallback).
-     */
-    public function manualVerifyBooking(Request $request)
-    {
-        $request->validate(['booking_id' => 'required|exists:bookings,id']);
-        $booking = Booking::find($request->booking_id);
-
-        if ($booking->status !== 'pending') {
-            return back()->with('error', 'Booking is not pending.');
-        }
-
-        $booking->update([
-            'is_paid' => true,
-            'status' => 'confirmed',
-            'payment_method' => 'manual',
-            'paid_at' => now(),
-        ]);
-
-        if ($booking->advertisement) {
-            $booking->advertisement->decrement('available_seats', $booking->number_of_seats);
-        }
-
-        return back()->with('success', '✅ Booking payment verified manually. Ride confirmed.');
-    }
-
-    /**
-     * Manual verification for rentals (fallback).
-     */
-    public function manualVerifyRental(Request $request)
-    {
-        $request->validate(['rental_id' => 'required|exists:bike_rentals,id']);
-        $rental = BikeRental::find($request->rental_id);
-
-        if ($rental->status !== 'pending') {
-            return back()->with('error', 'Rental is not pending.');
-        }
-
-        $rental->update([
-            'is_paid' => true,
-            'status' => 'active',
-            'payment_method' => 'manual',
-            'paid_at' => now(),
-        ]);
-
-        if ($rental->bike) {
-            $rental->bike->update(['status' => 'rented']);
-        }
-
-        return back()->with('success', '✅ Rental payment verified manually. Bike is now active.');
-    }
-
-    /**
-     * Unified manual verification (supports both booking and rental).
+     * Unified manual verification.
      */
     public function manualVerify(Request $request)
     {
@@ -358,6 +302,102 @@ class PaymentController extends Controller
         return back()->with('error', 'No valid booking or rental ID provided.');
     }
 
+    /**
+     * Manual verification for booking.
+     */
+    public function manualVerifyBooking(Request $request)
+    {
+        $request->validate(['booking_id' => 'required|exists:bookings,id']);
+        $booking = Booking::find($request->booking_id);
+
+        if ($booking->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($booking->status !== 'pending') {
+            return back()->with('error', 'Booking is not pending.');
+        }
+
+        if ($booking->is_paid) {
+            return back()->with('error', 'Booking is already paid.');
+        }
+
+        DB::transaction(function () use ($booking) {
+            Payment::create([
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'transaction_id' => 'MANUAL-' . time() . '-' . $booking->id,
+                'amount' => $booking->total_price,
+                'net_amount' => $booking->total_price,
+                'payment_method' => 'manual',
+                'status' => 'completed',
+                'payment_date' => now(),
+            ]);
+
+            $booking->update([
+                'is_paid' => true,
+                'status' => 'confirmed',
+                'payment_date' => now(),
+            ]);
+
+            if ($booking->advertisement && $booking->advertisement->available_seats > 0) {
+                $booking->advertisement->decrement('available_seats', $booking->number_of_seats);
+            }
+        });
+
+        $this->processAutoPayout($booking);
+
+        return redirect()->route('user.bookings.index')
+            ->with('success', '✅ Booking payment verified manually! Booking is now confirmed.');
+    }
+
+    /**
+     * Manual verification for rental.
+     */
+    public function manualVerifyRental(Request $request)
+    {
+        $request->validate(['rental_id' => 'required|exists:bike_rentals,id']);
+        $rental = BikeRental::find($request->rental_id);
+
+        if ($rental->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($rental->status !== 'pending') {
+            return back()->with('error', 'Rental is not pending.');
+        }
+
+        if ($rental->is_paid) {
+            return back()->with('error', 'Rental is already paid.');
+        }
+
+        DB::transaction(function () use ($rental) {
+            Payment::create([
+                'booking_id' => null,
+                'bike_rental_id' => $rental->id,
+                'user_id' => $rental->user_id,
+                'transaction_id' => 'MANUAL-' . time() . '-' . $rental->id,
+                'amount' => $rental->total_amount,
+                'net_amount' => $rental->total_amount,
+                'payment_method' => 'manual',
+                'status' => 'completed',
+                'payment_date' => now(),
+            ]);
+
+            $rental->update([
+                'is_paid' => true,
+                'status' => 'active',
+                'payment_date' => now(),
+            ]);
+
+            if ($rental->bike) {
+                $rental->bike->update(['status' => 'rented']);
+            }
+        });
+
+        return back()->with('success', '✅ Rental payment verified manually. Bike is now active.');
+    }
+
     // ============================================================
     // 5. INTERNAL HELPERS
     // ============================================================
@@ -373,6 +413,7 @@ class PaymentController extends Controller
                 'user_id' => $booking->user_id,
                 'transaction_id' => $transactionId,
                 'amount' => $booking->total_price,
+                'net_amount' => $booking->total_price,
                 'payment_method' => 'paychangu',
                 'status' => 'completed',
                 'payment_date' => now(),
@@ -386,7 +427,7 @@ class PaymentController extends Controller
         });
 
         session()->forget(['pending_ride_booking_id', 'pending_ride_tx_ref']);
-        Log::info('Booking payment processed', ['booking_id' => $booking->id, 'transaction' => $transactionId]);
+        Log::info('Booking payment processed', ['booking_id' => $booking->id]);
     }
 
     /**
@@ -400,6 +441,7 @@ class PaymentController extends Controller
                 'user_id' => $rental->user_id,
                 'transaction_id' => $transactionId,
                 'amount' => $rental->total_amount,
+                'net_amount' => $rental->total_amount,
                 'payment_method' => 'paychangu',
                 'status' => 'completed',
                 'payment_date' => now(),
@@ -417,7 +459,7 @@ class PaymentController extends Controller
         });
 
         session()->forget(['pending_rental_id', 'pending_rental_tx_ref']);
-        Log::info('Rental payment processed', ['rental_id' => $rental->id, 'transaction' => $transactionId]);
+        Log::info('Rental payment processed', ['rental_id' => $rental->id]);
     }
 
     /**
@@ -426,14 +468,20 @@ class PaymentController extends Controller
     protected function processAutoPayout(Booking $booking)
     {
         $owner = $booking->advertisement->owner;
-        $ownerEarnings = $booking->owner_earnings;
+        $ownerEarnings = $booking->owner_earnings ?? ($booking->total_price * 0.80);
+
+        // Skip payout for subscription bookings
+        if ($booking->booking_type === 'subscription') {
+            Log::info('Subscription booking - skipping payout', ['booking_id' => $booking->id]);
+            return;
+        }
 
         if (!$owner->phone) {
             Log::error('Owner has no phone number for payout', ['owner_id' => $owner->id]);
             return;
         }
 
-        $payoutService = new \App\Services\PayChanguPayoutService();
+        $payoutService = new PayChanguPayoutService();
         $reference = 'PAY-' . $booking->id . '-' . time();
 
         $result = $payoutService->sendMoney(
@@ -448,7 +496,7 @@ class PaymentController extends Controller
             'booking_id' => $booking->id,
             'user_id' => $owner->id,
             'amount' => $ownerEarnings,
-            'platform_fee' => $booking->platform_fee,
+            'platform_fee' => $booking->platform_fee ?? ($booking->total_price * 0.20),
             'recipient_phone' => $owner->phone,
             'provider' => 'airtel_money',
             'reference' => $reference,

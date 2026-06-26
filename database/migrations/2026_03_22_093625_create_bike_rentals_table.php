@@ -44,6 +44,9 @@ return new class extends Migration
             $table->index('status');
             $table->index(['user_id', 'status']);
             $table->index(['bike_id', 'status']);
+
+            $table->decimal('late_fee', 10, 2)->default(0);
+            $table->boolean('late_fee_paid')->default(false);
         });
     }
 

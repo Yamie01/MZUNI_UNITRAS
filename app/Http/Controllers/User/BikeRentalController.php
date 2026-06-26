@@ -5,11 +5,8 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Bike;
 use App\Models\BikeRental;
-use App\Models\Payment;
-use App\Models\Subscription;
-use App\Models\SubscriptionUsage;
+use App\Models\Location;
 use App\Services\PayChanguService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,102 +22,115 @@ class BikeRentalController extends Controller
     }
 
     // ============================================================
-    // 1. RENTAL FORM & PROCESSING
+    // 1. SHOW ACTIVATION FORM
     // ============================================================
 
     /**
-     * Show bike rental form.
+     * Show bike activation form.
      */
     public function rent(Bike $bike)
     {
-        if ($bike->status !== 'available') {
+        // Check if bike is available
+        if (!$bike->isAvailable()) {
             return redirect()->route('user.bikes.index')
                 ->with('error', 'This bike is not available for rent.');
         }
-        return view('user.bikes.rent', compact('bike'));
-    }
 
-    /**
-     * Process bike rental.
-     */
-    public function processRent(Request $request, Bike $bike)
-    {
-        $request->validate([
-            'duration' => 'required|integer|min:1|max:30',
-            'duration_type' => 'required|in:hour,day',
-            'pickup_location' => 'required|string',
-            'dropoff_location' => 'required|string',
-            'notes' => 'nullable|string',
-        ]);
-
-        $duration = (int) $request->duration;
-        $durationType = $request->duration_type;
-
-        $durationTypeMap = ['hour' => 'hourly', 'day' => 'daily'];
-        $dbDurationType = $durationTypeMap[$durationType] ?? 'hourly';
-
-        $subscription = Subscription::where('user_id', Auth::id())
+        // Check if user already has an active rental
+        $activeRental = BikeRental::where('user_id', auth()->id())
             ->where('status', 'active')
-            ->where('end_date', '>', now())
             ->first();
 
-        $rate = $durationType === 'hour' ? $bike->price_per_hour : $bike->price_per_day;
-        $totalAmount = $rate * $duration;
-
-        $isFree = false;
-        $status = 'pending';
-        $deposit = $bike->deposit_amount;
-
-        if ($subscription && $subscription->canBookRide()) {
-            $isFree = true;
-            $totalAmount = 0;
-            $status = 'active';
-            $deposit = 0;
+        if ($activeRental) {
+            return redirect()->route('user.bike-rentals.show', $activeRental)
+                ->with('error', 'You already have an active bike rental. Please return it first.');
         }
 
-        $rentalCode = 'BIKE-' . strtoupper(uniqid());
-        $hoursToAdd = $durationType === 'hour' ? $duration : $duration * 24;
-
-        $rental = BikeRental::create([
-            'rental_code' => $rentalCode,
-            'user_id' => Auth::id(),
-            'bike_id' => $bike->id,
-            'duration' => $duration,
-            'duration_type' => $dbDurationType,
-            'rate_per_unit' => $rate,
-            'subtotal' => $totalAmount,
-            'total_amount' => $totalAmount,
-            'deposit_paid' => $deposit,
-            'status' => $status,
-            'is_paid' => $isFree,
-            'pickup_location' => $request->pickup_location,
-            'dropoff_location' => $request->dropoff_location,
-            'notes' => $request->notes,
-            'start_time' => now(),
-            'rental_date' => now(),
-            'expected_return_time' => now()->addHours($hoursToAdd),
-        ]);
-
-        if ($isFree && $subscription) {
-            SubscriptionUsage::create([
-                'subscription_id' => $subscription->id,
-                'rental_id' => $rental->id,
-                'usage_date' => now(),
-            ]);
-            return redirect()->route('user.bike-rentals.show', $rental)
-                ->with('success', "✅ Free rental activated using your {$subscription->type} pass!");
-        }
-
-        return redirect()->route('user.bike-rentals.payment', $rental)
-            ->with('info', 'Please complete payment to activate your rental.');
+        $locations = Location::orderBy('name')->get();
+        return view('user.bikes.rent', compact('bike', 'locations'));
     }
 
     // ============================================================
-    // 2. DISPLAY RENTALS
+    // 2. ACTIVATE BIKE
     // ============================================================
 
     /**
-     * List user's rentals.
+     * Activate bike rental with verification.
+     */
+    public function processRent(Request $request, Bike $bike)
+{
+    Log::info('processRent called', $request->all());
+    
+    $user = auth()->user();
+
+    // Check if user already has active rental
+    $activeRental = BikeRental::where('user_id', $user->id)
+        ->where('status', 'active')
+        ->first();
+
+    if ($activeRental) {
+        return back()->with('error', 'You already have an active bike rental. Please return it first.');
+    }
+
+    // Validate request - Use registration_number instead of university_id
+    $request->validate([
+        'registration_number' => 'required|string|max:50',
+        'phone_number' => 'required|regex:/^[0-9]{10}$/',
+        'pickup_location' => 'required|string',
+        'dropoff_location' => 'required|string',
+    ]);
+
+    // Check if bike is still available
+    if (!$bike->isAvailable()) {
+        return back()->with('error', 'This bike is no longer available.');
+    }
+
+    try {
+        DB::transaction(function () use ($request, $bike, $user) {
+            // Generate rental code
+            $rentalCode = BikeRental::generateRentalCode();
+
+            // Create rental record
+            $rental = BikeRental::create([
+                'rental_code' => $rentalCode,
+                'bike_id' => $bike->id,
+                'user_id' => $user->id,
+                'registration_number' => $request->registration_number,
+                'phone_number' => $request->phone_number,
+                'pickup_location' => $request->pickup_location,
+                'dropoff_location' => $request->dropoff_location,
+                'start_time' => now(),
+                'status' => 'active',
+                'is_paid' => false,
+                'rate_per_minute' => 2.00,
+            ]);
+
+            Log::info('Rental created', ['rental_id' => $rental->id]);
+
+            // Update bike status
+            $bike->markAsActive($user->id);
+
+            Log::info('Bike updated', ['bike_id' => $bike->id]);
+
+            // Store in session
+            session(['active_rental_id' => $rental->id]);
+        });
+
+        Log::info('Transaction completed successfully');
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('success', '🚲 Bike activated successfully! Rate: MWK 2 per minute.');
+
+    } catch (\Exception $e) {
+        Log::error('Activation failed', ['error' => $e->getMessage()]);
+        return back()->with('error', 'Failed to activate bike: ' . $e->getMessage());
+    }
+}
+    // ============================================================
+    // 3. DISPLAY RENTALS
+    // ============================================================
+
+    /**
+     * List user's bike rentals.
      */
     public function index()
     {
@@ -128,161 +138,227 @@ class BikeRentalController extends Controller
             ->with('bike')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+        
         return view('user.bike-rentals.index', compact('rentals'));
     }
 
     /**
-     * Show rental details.
+     * Show rental details with live timer.
      */
     public function show(BikeRental $rental)
     {
         if ($rental->user_id !== Auth::id()) {
             abort(403);
         }
+
+        // Refresh session for active rental
+        if ($rental->status === 'active') {
+            session(['active_rental_id' => $rental->id]);
+        }
+
         return view('user.bike-rentals.show', compact('rental'));
     }
 
     // ============================================================
-    // 3. CANCEL RENTAL
+    // 4. RETURN BIKE
     // ============================================================
 
     /**
-     * Cancel a pending rental.
-     */
-    public function cancel(BikeRental $rental)
-    {
-        if ($rental->user_id !== Auth::id()) {
-            abort(403);
-        }
-        if ($rental->status !== 'pending') {
-            return back()->with('error', 'Cannot cancel this rental.');
-        }
-        $rental->update(['status' => 'cancelled']);
-        return back()->with('success', 'Rental cancelled successfully.');
-    }
-
-    // ============================================================
-    // 4. RETURN BIKE (with Late Fee)
-    // ============================================================
-
-    /**
-     * Return a bike (includes late fee calculation).
+     * Return bike and calculate total cost.
      */
     public function returnBike(BikeRental $rental)
     {
-        if ($rental->user_id !== Auth::id() && Auth::user()->user_type !== 'admin') {
-            abort(403);
+        if ($rental->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access.');
         }
 
-        if ($rental->status !== 'active' && $rental->status !== 'rented') {
-            return back()->with('error', 'Only active rentals can be returned.');
+        if (!$rental->isActive()) {
+            return back()->with('error', 'This rental is not active.');
         }
 
-        DB::transaction(function () use ($rental) {
-            $rental->actual_return_time = now();
+        // Calculate total minutes and cost
+        $minutes = $rental->elapsed_minutes;
+        $totalCost = $minutes * $rental->rate_per_minute;
 
-            // Check for late return
-            if ($rental->expected_return_time && now()->gt($rental->expected_return_time)) {
-                $hoursLate = now()->diffInHours($rental->expected_return_time);
-                $lateFee = $hoursLate * 500; // Example: MWK 500 per hour
-                $rental->late_fee = $lateFee;
-                $rental->late_fee_paid = false;
-                $rental->status = 'returned_late';
-            } else {
-                $rental->status = 'completed';
-            }
+        DB::transaction(function () use ($rental, $minutes, $totalCost) {
+            $rental->update([
+                'end_time' => now(),
+                'total_minutes' => $minutes,
+                'total_amount' => $totalCost,
+                'status' => 'completed',
+            ]);
 
-            $rental->save();
-
-            // Make bike available again
+            // Update bike status to available
             if ($rental->bike) {
-                $rental->bike->update(['status' => 'available']);
+                $rental->bike->markAsAvailable();
             }
         });
 
-        // If late fee, redirect to payment
-        if ($rental->late_fee > 0 && !$rental->late_fee_paid) {
-            return redirect()->route('rentals.pay-late-fee', $rental->id)
-                ->with('info', 'You have a late fee of MWK ' . number_format($rental->late_fee, 0) . '. Please pay it.');
-        }
+        // Clear session
+        session()->forget('active_rental_id');
 
         return redirect()->route('user.bike-rentals.show', $rental)
-            ->with('success', 'Bike returned on time. Thank you!');
+            ->with('success', '🚲 Bike returned successfully! Total: ' . $minutes . ' minutes = MWK ' . number_format($totalCost, 2));
     }
 
     // ============================================================
-    // 5. LATE FEE PAYMENT
+    // 5. PAYMENT
     // ============================================================
 
     /**
-     * Show late fee payment page.
+     * Pay for rental using PayChangu.
      */
-    public function payLateFee($rentalId)
+    public function initiatePayment(BikeRental $rental)
     {
-        $rental = BikeRental::findOrFail($rentalId);
-        if ($rental->late_fee_paid) {
-            return redirect()->route('dashboard')->with('error', 'Already paid.');
+        if ($rental->user_id !== auth()->id()) {
+            abort(403);
         }
-        return view('rentals.pay-late-fee', compact('rental'));
-    }
 
-    /**
-     * Initiate late fee payment.
-     */
-    public function initiateLateFeePayment(Request $request, $rentalId)
-    {
-        $rental = BikeRental::findOrFail($rentalId);
+        if ($rental->is_paid) {
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'This rental is already paid.');
+        }
 
-        $txRef = 'LATE-' . $rental->id . '-' . time();
+        if (!$rental->isCompleted()) {
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'Please return the bike first before paying.');
+        }
+
+        $txRef = 'RENT-' . $rental->id . '-' . time();
 
         $paymentData = [
-            'amount' => (float) $rental->late_fee,
+            'amount' => (float) $rental->total_amount,
             'currency' => 'MWK',
             'email' => auth()->user()->email,
             'first_name' => auth()->user()->name,
             'last_name' => '',
-            'callback_url' => route('rentals.late-fee-callback'),
-            'return_url' => route('rentals.late-fee-success'),
+            'callback_url' => route('api.bike-rental.webhook'),
+            'return_url' => route('user.bike-rentals.payment.return'),
             'tx_ref' => $txRef,
             'customization' => [
-                'title' => 'Mzuni UNITRAS - Late Fee',
-                'description' => "Late fee for rental #{$rental->id}",
+                'title' => 'Mzuni UNITRAS - Bike Rental',
+                'description' => "Rental #{$rental->rental_code}",
             ],
             'meta' => [
                 'rental_id' => $rental->id,
-                'type' => 'late_fee',
+                'user_id' => auth()->id(),
+                'type' => 'bike_rental',
             ],
         ];
 
+        Log::info('Initiating PayChangu payment for bike rental', [
+            'rental_id' => $rental->id,
+            'amount' => $rental->total_amount,
+            'tx_ref' => $txRef,
+        ]);
+
         $response = $this->paychangu->initializePayment($paymentData);
 
-        if ($response['success'] ?? false) {
-            session(['pending_late_fee_rental_id' => $rental->id]);
+        if ($response['success']) {
+            session(['pending_rental_id' => $rental->id]);
+            session(['pending_rental_tx_ref' => $txRef]);
             return redirect($response['checkout_url']);
         } else {
-            return back()->with('error', $response['message'] ?? 'Payment initiation failed.');
+            Log::error('PayChangu init failed for rental', $response);
+            return back()->with('error', $response['message'] ?? 'Unable to initiate payment');
         }
     }
 
     /**
-     * Late fee payment callback (webhook).
+     * Mark rental as paid (for testing or manual).
      */
-    public function lateFeeCallback(Request $request)
+    public function markAsPaid(BikeRental $rental)
     {
-        $payload = $request->all();
-        Log::info('Late fee callback received', $payload);
-
-        $rentalId = $payload['rental_id'] ?? $payload['meta']['rental_id'] ?? null;
-        if ($rentalId) {
-            $rental = BikeRental::find($rentalId);
-            if ($rental && !$rental->late_fee_paid) {
-                $rental->update([
-                    'late_fee_paid' => true,
-                    'status' => 'completed',
-                ]);
-                Log::info('Late fee paid for rental', ['rental_id' => $rentalId]);
-            }
+        if ($rental->user_id !== auth()->id()) {
+            abort(403);
         }
-        return response()->json(['status' => 'ok'], 200);
+
+        if ($rental->is_paid) {
+            return back()->with('error', 'This rental is already paid.');
+        }
+
+        $rental->markAsPaid('manual');
+
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('success', '✅ Payment completed successfully! Amount: MWK ' . number_format($rental->total_amount, 2));
+    }
+
+    // ============================================================
+    // 6. VERIFICATION HELPERS
+    // ============================================================
+
+    /**
+     * Check if user has an active rental.
+     */
+    public function checkActiveRental()
+    {
+        $activeRental = BikeRental::where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->first();
+
+        return response()->json([
+            'has_active' => !is_null($activeRental),
+            'rental' => $activeRental
+        ]);
+    }
+
+    /**
+     * Get active rental details for AJAX.
+     */
+    public function getActiveRental()
+    {
+        $rental = BikeRental::where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->with('bike')
+            ->first();
+
+        if (!$rental) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active rental found.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'rental' => [
+                'id' => $rental->id,
+                'rental_code' => $rental->rental_code,
+                'bike' => $rental->bike->brand . ' ' . $rental->bike->model,
+                'start_time' => $rental->start_time->format('d M Y, H:i'),
+                'elapsed_minutes' => $rental->elapsed_minutes,
+                'current_cost' => $rental->current_cost,
+                'rate_per_minute' => $rental->rate_per_minute,
+            ]
+        ]);
+    }
+
+    /**
+     * Get rental timer status for active rental.
+     */
+    public function getTimerStatus(BikeRental $rental)
+    {
+        if ($rental->user_id !== auth()->id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($rental->status !== 'active') {
+            return response()->json([
+                'active' => false,
+                'status' => $rental->status
+            ]);
+        }
+
+        $minutes = $rental->elapsed_minutes;
+        $cost = $rental->current_cost;
+
+        return response()->json([
+            'active' => true,
+            'rental_id' => $rental->id,
+            'minutes' => $minutes,
+            'cost' => $cost,
+            'formatted_time' => $rental->elapsed_time,
+            'formatted_cost' => 'MWK ' . number_format($cost, 2),
+        ]);
     }
 }

@@ -24,8 +24,11 @@ class BookingController extends Controller
     protected $revenueService;
     protected $paychangu;
 
-    public function __construct(PaymentService $paymentService, RevenueService $revenueService, PayChanguService $paychangu)
-    {
+    public function __construct(
+        PaymentService $paymentService,
+        RevenueService $revenueService,
+        PayChanguService $paychangu
+    ) {
         $this->paymentService = $paymentService;
         $this->revenueService = $revenueService;
         $this->paychangu = $paychangu;
@@ -47,7 +50,10 @@ class BookingController extends Controller
                 ->with('error', 'This ride is no longer available.');
         }
 
+        // Fetch locations for dropdown
         $locations = Location::orderBy('name')->get();
+
+        // Check subscription status
         $subscription = Subscription::where('user_id', Auth::id())
             ->where('status', 'active')
             ->where('end_date', '>', now())
@@ -96,10 +102,12 @@ class BookingController extends Controller
         $bookingType = 'paid';
 
         if ($subscription && $subscription->canBookRide()) {
+            // Use subscription (FREE booking)
             $isSubscriptionBooking = true;
             $totalPrice = 0;
             $bookingType = 'subscription';
         } else {
+            // No active subscription or limit exceeded → paid booking
             $totalPrice = $advertisement->price * $request->seats;
             $bookingType = 'paid';
         }
@@ -189,16 +197,11 @@ class BookingController extends Controller
     }
 
     /**
-     * Display user's bookings (legacy method).
+     * Display user's bookings (legacy method - redirect to index).
      */
     public function myBookings()
     {
-        $bookings = Auth::user()->bookings()
-            ->with(['advertisement', 'vehicle', 'payment'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        return view('bookings.my-bookings', compact('bookings'));
+        return redirect()->route('user.bookings.index');
     }
 
     // ============================================================
@@ -219,7 +222,48 @@ class BookingController extends Controller
                 ->with('error', 'This booking cannot be paid for.');
         }
 
+        if ($booking->is_paid) {
+            return redirect()->route('user.bookings.show', $booking)
+                ->with('error', 'This booking has already been paid.');
+        }
+
         return view('user.bookings.payment', compact('booking'));
+    }
+
+    /**
+     * Initiate payment for a booking.
+     * This method handles the payment initiation button click.
+     */
+    public function initiatePayment(Booking $booking)
+    {
+        // Debug logging
+        Log::info('🔥 initiatePayment called for booking ID: ' . $booking->id);
+        Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
+        Log::info('Booking status: ' . $booking->status . ', is_paid: ' . ($booking->is_paid ? 'true' : 'false'));
+
+        // Check authorization
+        if ($booking->user_id !== Auth::id()) {
+            Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to pay for booking ' . $booking->id);
+            abort(403, 'Unauthorized access.');
+        }
+
+        // Check if booking can be paid
+        if ($booking->status !== 'pending') {
+            Log::error('❌ Booking not pending: ' . $booking->status);
+            return redirect()->route('user.bookings.index')
+                ->with('error', 'This booking cannot be paid for.');
+        }
+
+        if ($booking->is_paid) {
+            Log::error('❌ Booking already paid');
+            return redirect()->route('user.bookings.show', $booking)
+                ->with('error', 'This booking has already been paid.');
+        }
+
+        Log::info('✅ Redirecting to payment initiation for booking ID: ' . $booking->id);
+
+        // Redirect to the payment initiation
+        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
     }
 
     /**
@@ -236,29 +280,11 @@ class BookingController extends Controller
                 ->with('error', 'This booking cannot be paid for.');
         }
 
-        // Delegate to PaymentController
-        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
-    }
-
-    /**
-     * Initiate PayChangu payment.
-     */
-    public function initiatePayment(Booking $booking)
-    {
-        if ($booking->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        if ($booking->status !== 'pending') {
-            return redirect()->route('user.bookings.index')
-                ->with('error', 'This booking cannot be paid for.');
-        }
-
         return redirect()->route('payment.initiate', ['booking' => $booking->id]);
     }
 
     // ============================================================
-    // 4. CANCEL
+    // 4. CANCEL BOOKING
     // ============================================================
 
     /**
@@ -285,128 +311,100 @@ class BookingController extends Controller
     }
 
     /**
-     * Cancel a pending booking (legacy method).
+     * Legacy cancel method - redirects to the main cancel method.
      */
     public function cancelBooking($id)
     {
         $booking = Booking::findOrFail($id);
+        return $this->cancel($booking);
+    }
 
+    // ============================================================
+    // 5. TRIP MANAGEMENT (For Passengers)
+    // ============================================================
+
+    /**
+     * Start a trip – passenger boards the vehicle.
+     */
+    public function startTrip(Booking $booking)
+    {
+        // Debug logging
+        Log::info('🔥 startTrip called for booking ID: ' . $booking->id);
+        Log::info('Current trip_status: ' . $booking->trip_status);
+        Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
+
+        // Check authorization - passenger can start trip
         if ($booking->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized access.');
+            Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to start booking ' . $booking->id);
+            abort(403, 'Unauthorized action.');
         }
 
-        if ($booking->status !== 'pending') {
-            return redirect()->back()->with('error', 'Cannot cancel booking at this stage.');
+        // Validate booking status
+        if ($booking->status !== 'confirmed') {
+            Log::error('❌ Booking not confirmed: ' . $booking->status);
+            return back()->with('error', 'Booking must be confirmed to start trip.');
+        }
+
+        if ($booking->trip_status === 'completed') {
+            return back()->with('error', 'This trip is already completed.');
+        }
+
+        if ($booking->trip_status === 'in_progress') {
+            return back()->with('error', 'Trip is already in progress.');
+        }
+
+        // Update the booking
+        $booking->update([
+            'trip_status' => 'in_progress',
+            'trip_started_at' => now(),
+        ]);
+
+        Log::info('✅ Trip started successfully for booking ID: ' . $booking->id);
+
+        return back()->with('success', 'You have boarded the vehicle. Safe journey! 🚗');
+    }
+
+    /**
+     * Complete a trip – passenger reaches destination.
+     */
+    public function completeTrip(Booking $booking)
+    {
+        // Debug logging
+        Log::info('🔥 completeTrip called for booking ID: ' . $booking->id);
+        Log::info('Current trip_status: ' . $booking->trip_status);
+        Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
+
+        // Allow passenger to complete trip
+        if ($booking->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($booking->trip_status !== 'in_progress') {
+            return back()->with('error', 'Trip must be in progress to complete.');
+        }
+
+        if ($booking->status === 'completed') {
+            return back()->with('error', 'This trip is already completed.');
         }
 
         DB::transaction(function () use ($booking) {
-            $advertisement = $booking->advertisement;
-            $advertisement->available_seats += $booking->number_of_seats;
-            $advertisement->save();
-
-            $booking->status = 'cancelled';
-            $booking->trip_status = 'cancelled';
-            $booking->save();
-
-            if ($booking->payment) {
-                $this->paymentService->processRefund($booking->payment);
+            // Calculate platform fee and owner earnings if not set
+            if ($booking->platform_fee === null) {
+                $booking->platform_fee = $booking->total_price * 0.20;
+                $booking->owner_earnings = $booking->total_price * 0.80;
             }
+
+            $booking->update([
+                'trip_status' => 'completed',
+                'trip_completed_at' => now(),
+                'status' => 'completed',
+            ]);
         });
 
-        return redirect()->back()->with('success', 'Booking cancelled successfully.');
+        return back()->with('success', 'You have reached your destination. Thank you for riding with us! 🎉');
     }
 
     // ============================================================
-    // 5. TRIP MANAGEMENT (for Passengers & Vehicle Owners)
-    // ============================================================
-
-    /**
-     * Start a trip (allows both passenger and vehicle owner).
-     */
-    /**
- * Start a trip (passenger boards the vehicle).
- */
-// ============================================================
-// 5. TRIP MANAGEMENT (for Passengers)
-// ============================================================
-
-/**
- * Start a trip – passenger boards the vehicle.
- */
-public function startTrip(Booking $booking)
-{
-    // 🔥 DEBUG
-    \Log::info('🔥 startTrip called for booking ID: ' . $booking->id);
-    \Log::info('Current trip_status: ' . $booking->trip_status);
-    \Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
-
-    if ($booking->user_id !== Auth::id()) {
-        \Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to start booking ' . $booking->id);
-        abort(403, 'Unauthorized action.');
-    }
-
-    if ($booking->status !== 'confirmed') {
-        \Log::error('❌ Booking not confirmed: ' . $booking->status);
-        return back()->with('error', 'Booking must be confirmed to start trip.');
-    }
-
-    if ($booking->trip_status === 'completed') {
-        \Log::error('❌ Trip already completed');
-        return back()->with('error', 'This trip is already completed.');
-    }
-
-    if ($booking->trip_status === 'in_progress') {
-        \Log::error('❌ Trip already in progress');
-        return back()->with('error', 'Trip is already in progress.');
-    }
-
-    // ✅ Update the booking
-    $updated = $booking->update([
-        'trip_status' => 'in_progress',
-        'trip_started_at' => now(),
-    ]);
-
-    \Log::info('✅ Update result: ' . ($updated ? 'success' : 'failed'));
-
-    return back()->with('success', 'You have boarded the vehicle. Safe journey! 🚗');
-}
-public function completeTrip(Booking $booking)
-{
-    // 🔥 DEBUG
-    \Log::info('🔥 completeTrip called for booking ID: ' . $booking->id);
-    \Log::info('Current trip_status: ' . $booking->trip_status);
-    \Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
-
-    // ✅ Allow passenger to complete trip
-    if ($booking->user_id !== Auth::id()) {
-        abort(403, 'Unauthorized action.');
-    }
-
-    if ($booking->trip_status !== 'in_progress') {
-        return back()->with('error', 'Trip must be in progress to complete.');
-    }
-
-    if ($booking->status === 'completed') {
-        return back()->with('error', 'This trip is already completed.');
-    }
-
-    DB::transaction(function () use ($booking) {
-        if ($booking->platform_fee === null) {
-            $booking->platform_fee = $booking->total_price * 0.20;
-            $booking->owner_earnings = $booking->total_price * 0.80;
-        }
-
-        $booking->update([
-            'trip_status' => 'completed',
-            'trip_completed_at' => now(),
-            'status' => 'completed',
-        ]);
-    });
-
-    return back()->with('success', 'You have reached your destination. Thank you for riding with us! 🎉');
-}
-
-// ============================================================
     // 6. SEARCH
     // ============================================================
 
