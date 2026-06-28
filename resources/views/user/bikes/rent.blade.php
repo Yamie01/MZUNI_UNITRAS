@@ -29,41 +29,30 @@
                     </div>
 
                     <form action="{{ route('user.bikes.rent.process', $bike) }}" method="POST">
-                        @csrf
-
-                        <div class="mb-3">
-                            <label class="form-label">Duration</label>
-                            <input type="number" name="duration" class="form-control" value="1" min="1" max="30" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Duration Type</label>
-                            <select name="duration_type" class="form-select" required>
-                                <option value="hour">Hour(s)</option>
-                                <option value="day">Day(s)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Pickup Location</label>
-                            <input type="text" name="pickup_location" class="form-control" placeholder="Enter pickup location" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Dropoff Location</label>
-                            <input type="text" name="dropoff_location" class="form-control" placeholder="Enter dropoff location" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Notes (optional)</label>
-                            <textarea name="notes" class="form-control" rows="2"></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-bicycle me-2"></i> Rent Now
-                        </button>
-                    </form>
-
+    @csrf
+    
+    <div class="mb-3">
+        <label class="form-label">Registration Number</label>
+        <input type="text" name="registration_number" class="form-control" required>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Phone Number</label>
+        <input type="text" name="phone_number" class="form-control" required>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Pickup Location</label>
+        <input type="text" name="pickup_location" class="form-control" required>
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Dropoff Location</label>
+        <input type="text" name="dropoff_location" class="form-control" required>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Activate Bike</button>
+</form>
                     <div class="mt-3 text-center">
                         <a href="{{ route('user.bikes.index') }}" class="btn btn-link">Cancel</a>
                     </div>

@@ -90,21 +90,24 @@
                     @if($rental->status === 'active')
                         <div class="card bg-light mb-4 border border-success">
                             <div class="card-body text-center">
-                                <h6 class="text-muted">⏱️ Live Timer</h6>
+                                <h6 class="text-muted">⏱️ Live Timer - MWK 2 per minute</h6>
                                 <div class="timer-display timer-active" id="timerDisplay">
-                                    {{ $rental->elapsed_time }}
+                                    {{ $rental->elapsed_time ?? '00:00:00' }}
                                 </div>
                                 <div class="row mt-3">
                                     <div class="col-6">
-                                        <small>Elapsed Time</small>
-                                        <div><strong id="elapsedDisplay">{{ $rental->elapsed_time }}</strong></div>
+                                        <small>Time Elapsed</small>
+                                        <div><strong id="elapsedDisplay">{{ $rental->elapsed_time ?? '0m' }}</strong></div>
                                     </div>
                                     <div class="col-6">
                                         <small>Current Cost</small>
                                         <div class="cost-display" id="costDisplay">
-                                            MWK {{ number_format($rental->current_cost, 2) }}
+                                            MWK {{ number_format($rental->current_cost ?? 0, 2) }}
                                         </div>
                                     </div>
+                                </div>
+                                <div class="mt-2">
+                                    <h5>Total Due: <span id="totalDueDisplay" class="text-primary">MWK {{ number_format($rental->current_cost ?? 0, 2) }}</span></h5>
                                 </div>
                                 <div class="mt-3">
                                     <form action="{{ route('user.bike-rentals.return', $rental) }}" method="POST" class="d-inline">
@@ -171,35 +174,85 @@
 @if($rental->status === 'active')
 <script>
     (function() {
+        // Get the start time from the server
         const startTime = new Date('{{ $rental->start_time->toISOString() }}').getTime();
+        const ratePerMinute = {{ $rental->rate_per_minute ?? 2.00 }};
+        
+        // Get DOM elements
         const timerDisplay = document.getElementById('timerDisplay');
         const elapsedDisplay = document.getElementById('elapsedDisplay');
         const costDisplay = document.getElementById('costDisplay');
-        const ratePerMinute = {{ $rental->rate_per_minute }};
-
-        function formatTime(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (hours > 0) {
-                return hours + 'h ' + mins + 'm';
-            }
-            return mins + 'm';
+        const totalDueDisplay = document.getElementById('totalDueDisplay');
+        
+        // Format time as HH:MM:SS
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            const h = String(hours).padStart(2, '0');
+            const m = String(minutes).padStart(2, '0');
+            const s = String(secs).padStart(2, '0');
+            
+            return h + ':' + m + ':' + s;
         }
-
+        
+        // Format time as "Xh Ym" or "Ym Zs"
+        function formatTimeShort(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return hours + 'h ' + minutes + 'm ' + secs + 's';
+            } else {
+                return minutes + 'm ' + secs + 's';
+            }
+        }
+        
+        // Update the timer and cost
         function updateTimer() {
             const now = Date.now();
             const elapsedSeconds = Math.floor((now - startTime) / 1000);
-            const totalMinutes = Math.ceil(elapsedSeconds / 60);
-            const cost = totalMinutes * ratePerMinute;
-
-            const timeString = formatTime(totalMinutes);
-            timerDisplay.textContent = timeString;
-            elapsedDisplay.textContent = timeString;
-            costDisplay.textContent = 'MWK ' + cost.toFixed(2);
+            
+            // Don't go negative
+            const displaySeconds = Math.max(0, elapsedSeconds);
+            
+            // Calculate cost (MWK 2 per minute)
+            const elapsedMinutes = Math.ceil(displaySeconds / 60);
+            const cost = elapsedMinutes * ratePerMinute;
+            
+            // Update displays
+            if (timerDisplay) {
+                timerDisplay.textContent = formatTime(displaySeconds);
+                timerDisplay.style.color = '#28a745';
+                timerDisplay.style.fontWeight = '700';
+            }
+            
+            if (elapsedDisplay) {
+                elapsedDisplay.textContent = formatTimeShort(displaySeconds);
+            }
+            
+            if (costDisplay) {
+                costDisplay.textContent = 'MWK ' + cost.toFixed(2);
+            }
+            
+            if (totalDueDisplay) {
+                totalDueDisplay.textContent = 'MWK ' + cost.toFixed(2);
+            }
         }
-
+        
+        // Update immediately
         updateTimer();
-        setInterval(updateTimer, 1000);
+        
+        // Update every second
+        const interval = setInterval(updateTimer, 1000);
+        console.log('⏱️ Timer started, updating every second');
+        
+        // Clean up interval when leaving the page
+        window.addEventListener('beforeunload', function() {
+            clearInterval(interval);
+        });
     })();
 </script>
 @endif

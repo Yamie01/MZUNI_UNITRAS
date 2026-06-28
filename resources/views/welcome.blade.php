@@ -116,6 +116,12 @@
             border-color: var(--accent);
             color: white;
         }
+        .btn-offer.accent {
+            background: var(--accent);
+        }
+        .btn-offer.accent:hover {
+            background: #e66a00;
+        }
 
         /* SEARCH CARD */
         .search-card {
@@ -156,6 +162,7 @@
             color: var(--text);
             border-radius: 20px;
             transition: 0.3s ease;
+            overflow: hidden;
         }
         .ride-card:hover, .bike-card:hover {
             transform: translateY(-6px);
@@ -188,6 +195,60 @@
             height: 300px;
             border-radius: 15px;
             border: 1px solid #ccc;
+        }
+        .map-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-map {
+            background: #f1f3f5;
+            border: none;
+            border-radius: 40px;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .location-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .location-input-group select {
+            flex: 1;
+        }
+        .btn-geolocate {
+            background: #60a4e7;
+            border: none;
+            border-radius: 40px;
+            padding: 6px 12px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2rem; }
+            .tab-btn { padding: 0.5rem 1.2rem; font-size: 0.85rem; }
+        }
+
+        /* Rented bike overlay */
+        .bike-card.rented {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .bike-card.rented .card-img {
+            filter: grayscale(1);
+        }
+        
+        /* Action button styles */
+        .action-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .action-btn-group .btn {
+            border-radius: 50px;
+            padding: 0.7rem 1.8rem;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -240,12 +301,15 @@
                 <div class="badge bg-light text-primary rounded-pill mb-3"><i class="fas fa-shield-alt me-1"></i> Trusted by Mzuzu Community</div>
                 <h1 class="hero-title">Your Campus Ride, <span style="background: linear-gradient(135deg, #fff, #ffd966); background-clip: text; -webkit-background-clip: text; color: transparent;">Just a Tap Away</span></h1>
                 <p class="lead mt-3">Safe carpool & bike sharing for students, staff, and locals. Browse freely – book only when you're ready.</p>
-                <div class="action-buttons-group mt-4">
-                    <a href="{{ route('offer.ride') }}" class="btn-offer">
-                        <i class="fas fa-plus-circle"></i> Offer a ride
+                <div class="action-btn-group mt-4">
+                    <a href="{{ route('user.bikes.index') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-bicycle me-2"></i> Pick a Bike
                     </a>
-                    <a href="{{ route('offer.ride') }}" class="btn-share">
-                        <i class="fas fa-share-alt"></i> Share a ride
+                    <a href="{{ route('search') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-car me-2"></i> Pick a Ride
+                    </a>
+                    <a href="{{ route('offer.ride') }}" class="btn btn-warning btn-lg">
+                        <i class="fas fa-plus-circle me-2"></i> Offer a Ride
                     </a>
                 </div>
             </div>
@@ -317,14 +381,9 @@
                         <i class="fas fa-bicycle"></i> Bike sharing
                     </button>
                 </div>
-                <div class="action-buttons-group">
-                    <a href="{{ route('offer.ride') }}" class="btn-offer" style="padding:0.6rem 1.5rem; font-size:0.9rem;">
-                        <i class="fas fa-plus-circle"></i> Offer a ride
-                    </a>
-                    <a href="{{ route('offer.ride') }}" class="btn-share" style="padding:0.6rem 1.5rem; font-size:0.9rem;">
-                        <i class="fas fa-share-alt"></i> Share a ride
-                    </a>
-                </div>
+                <a href="{{ route('offer.ride') }}" class="btn btn-warning">
+                    <i class="fas fa-plus-circle me-2"></i> Offer a Ride
+                </a>
             </div>
 
             <!-- Carpool Panel -->
@@ -342,7 +401,9 @@
                              data-date="{{ \Carbon\Carbon::parse($ride->departure_time)->format('Y-m-d') }}"
                              data-price="{{ $ride->price }}">
                             <div class="ride-card">
-                                <div class="card-img"><i class="fas fa-car-side fa-3x text-primary"></i></div>
+                                <div class="card-img p-3 text-center bg-light">
+                                    <i class="fas fa-car-side fa-4x text-primary"></i>
+                                </div>
                                 <div class="p-3">
                                     <div class="d-flex justify-content-between">
                                         <span class="badge bg-primary-light text-primary">{{ ucfirst(str_replace('_', ' ', $ride->ad_type)) }}</span>
@@ -353,11 +414,10 @@
                                         <i class="far fa-calendar-alt"></i> {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
                                         <span class="ms-2"><i class="fas fa-users"></i> {{ $ride->available_seats }} seats</span>
                                     </div>
-                                    <div class="mt-2 small text-warning">
-                                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i> 4.8 (120 reviews)
-                                    </div>
                                     <div class="d-grid mt-3">
-                                        <button class="book-btn book-action" data-type="ride">Book ride <i class="fas fa-arrow-right ms-1"></i></button>
+                                        <a href="{{ route('user.bookings.create', $ride) }}" class="btn btn-primary book-action" data-type="ride">
+                                            Hop In <i class="fas fa-arrow-right ms-1"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -371,25 +431,31 @@
             <!-- Bike Panel -->
             <div id="bikePanel" style="display: none;">
                 <div class="row g-4" id="bikesList">
+                    @php
+                        $availableBikes = $availableBikes->filter(function($bike) {
+                            return $bike->status === 'available';
+                        });
+                    @endphp
                     @forelse($availableBikes as $bike)
                         <div class="col-lg-3 col-md-6 bike-item" 
                              data-bike-id="{{ $bike->id }}"
                              data-location-id="{{ $bike->location_id ?? '' }}"
                              data-type="{{ strtolower($bike->type) }}">
                             <div class="bike-card">
-                                <div class="card-img"><i class="fas fa-bicycle fa-3x text-primary"></i></div>
+                                <div class="card-img p-3 text-center bg-light">
+                                    <i class="fas fa-bicycle fa-4x text-success"></i>
+                                </div>
                                 <div class="p-3">
                                     <h5 class="fw-bold">{{ $bike->brand }} {{ $bike->model }}</h5>
                                     <div class="text-muted small">{{ ucfirst($bike->type) }} Bike</div>
                                     <div class="d-flex justify-content-between mt-2">
-                                        <span>Hourly:</span><strong>MWK {{ number_format($bike->price_per_hour, 0) }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-3">
-                                        <span>Daily:</span><strong>MWK {{ number_format($bike->price_per_day, 0) }}</strong>
+                                        <span>Rate:</span><strong>MWK 2/min</strong>
                                     </div>
                                     <span class="badge bg-success mb-2"><i class="fas fa-check-circle"></i> Available now</span>
                                     <div class="d-grid">
-                                        <button class="book-btn book-action" data-type="bike">Rent now <i class="fas fa-arrow-right ms-1"></i></button>
+                                        <a href="{{ route('user.bikes.rent', $bike) }}" class="btn btn-primary book-action" data-type="bike">
+                                            Rent now <i class="fas fa-arrow-right ms-1"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -419,7 +485,7 @@
                     <div class="info-card">
                         <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
                         <h6>Estimated Savings</h6>
-                        <p class="small text-muted">Carpool/Ride Share saves up to 70%. Bike rental of  MWK 100/hour.</p>
+                        <p class="small text-muted">Carpool/Ride Share saves up to 70%. Bike rental MWK 2/minute.</p>
                     </div>
                 </div>
             </div>
@@ -446,7 +512,7 @@
                             <div class="col-4"><h2 class="fw-bold">{{ number_format($stats['completed_trips'] ?? 0) }}+</h2><p>Trips</p></div>
                         </div>
                         <hr class="bg-white opacity-25">
-                        <p class="mb-0 text-center"><i class="fas fa-map-marked-alt me-1"></i> Covering Mzuzu University main campus, Luwinga,Dunduzu Campus, Mzuzu Town and Chibavi and surrounding areas</p>
+                        <p class="mb-0 text-center"><i class="fas fa-map-marked-alt me-1"></i> Covering Mzuzu University main campus, Luwinga, Dunduzu Campus, Mzuzu Town and Chibavi and surrounding areas</p>
                     </div>
                 </div>
             </div>
@@ -743,55 +809,6 @@
             loginModal.show();
         }
     }
-
-    // For book/rent buttons
-    document.querySelectorAll('.book-action').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const type = this.getAttribute('data-type');
-            let targetUrl = '';
-            if (type === 'ride') {
-                const rideId = this.closest('.ride-item')?.dataset?.rideId;
-                if (rideId) targetUrl = "/book/" + rideId;
-            } else if (type === 'bike') {
-                const bikeId = this.closest('.bike-item')?.dataset?.bikeId;
-                if (bikeId) targetUrl = "/bikes/" + bikeId + "/rent";
-            }
-            @guest
-                redirectToLoginWithReturn(targetUrl);
-            @else
-                if (targetUrl) window.location.href = targetUrl;
-            @endguest
-        });
-    });
-
-    // Card clicks – same logic
-    document.querySelectorAll('.ride-card, .bike-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-            if (!e.target.closest('.book-action')) {
-                const rideItem = card.closest('.ride-item');
-                if (rideItem) {
-                    const rideId = rideItem?.dataset?.rideId;
-                    if (rideId) {
-                        @guest
-                            redirectToLoginWithReturn("/book/" + rideId);
-                        @else
-                            window.location.href = "/book/" + rideId;
-                        @endguest
-                    }
-                } else {
-                    const bikeId = card.closest('.bike-item')?.dataset?.bikeId;
-                    if (bikeId) {
-                        @guest
-                            redirectToLoginWithReturn("/bikes/" + bikeId + "/rent");
-                        @else
-                            window.location.href = "/bikes/" + bikeId + "/rent";
-                        @endguest
-                    }
-                }
-            }
-        });
-    });
 
     // Initial filter on page load
     setTimeout(filterBySearch, 500);

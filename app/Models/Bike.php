@@ -246,12 +246,12 @@ class Bike extends Model
      * Mark bike as active/rented.
      */
     public function markAsActive($userId = null)
-    {
-        $this->update([
-            'status' => 'active',
-            'current_renter_id' => $userId,
-        ]);
-    }
+{
+    $this->update([
+        'status' => 'rented',  // ← Change from 'active' to 'rented'
+        'current_renter_id' => $userId,
+    ]);
+}
 
     /**
      * Mark bike as available.

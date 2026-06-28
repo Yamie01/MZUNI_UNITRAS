@@ -231,23 +231,19 @@ class BookingController extends Controller
     }
 
     /**
-     * Initiate payment for a booking.
-     * This method handles the payment initiation button click.
+     * Initiate payment for a booking via PayChangu.
      */
     public function initiatePayment(Booking $booking)
     {
-        // Debug logging
         Log::info('🔥 initiatePayment called for booking ID: ' . $booking->id);
         Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
         Log::info('Booking status: ' . $booking->status . ', is_paid: ' . ($booking->is_paid ? 'true' : 'false'));
 
-        // Check authorization
         if ($booking->user_id !== Auth::id()) {
             Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to pay for booking ' . $booking->id);
             abort(403, 'Unauthorized access.');
         }
 
-        // Check if booking can be paid
         if ($booking->status !== 'pending') {
             Log::error('❌ Booking not pending: ' . $booking->status);
             return redirect()->route('user.bookings.index')
@@ -260,14 +256,151 @@ class BookingController extends Controller
                 ->with('error', 'This booking has already been paid.');
         }
 
-        Log::info('✅ Redirecting to payment initiation for booking ID: ' . $booking->id);
+        Log::info('✅ Initiating PayChangu payment for booking ID: ' . $booking->id);
 
-        // Redirect to the payment initiation
-        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
+        $txRef = 'BK-' . $booking->id . '-' . time();
+
+        $paymentData = [
+            'amount' => (float) $booking->total_price,
+            'currency' => 'MWK',
+            'email' => auth()->user()->email,
+            'first_name' => auth()->user()->name,
+            'last_name' => '',
+            'tx_ref' => $txRef,
+            'return_url' => route('payment.return'),
+            'callback_url' => route('api.bike-rental.webhook'),
+            'customization' => [
+                'title' => 'Mzuni UNITRAS - Ride Booking',
+                'description' => "Booking #{$booking->booking_reference}",
+            ],
+            'meta' => [
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'type' => 'ride_booking',
+            ],
+        ];
+
+        try {
+            $response = $this->paychangu->initializePayment($paymentData);
+
+            if ($response['success']) {
+                session([
+                    'pending_ride_booking_id' => $booking->id,
+                    'pending_ride_tx_ref' => $txRef,
+                ]);
+
+                Log::info('✅ PayChangu payment initiated, redirecting to checkout');
+                return redirect($response['checkout_url']);
+            } else {
+                Log::error('❌ PayChangu payment initiation failed', ['response' => $response]);
+                return redirect()->route('user.bookings.payment', $booking)
+                    ->with('error', $response['message'] ?? 'Unable to initiate payment. Please try again.');
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ PayChangu payment error: ' . $e->getMessage());
+            return redirect()->route('user.bookings.payment', $booking)
+                ->with('error', 'Payment service error. Please try again.');
+        }
     }
 
     /**
-     * Process payment (redirect to PayChangu).
+     * Handle payment return from PayChangu.
+     */
+    public function paymentReturn(Request $request)
+    {
+        $bookingId = session('pending_ride_booking_id');
+        $reference = $request->query('reference') ?? $request->query('tx_ref');
+
+        if (!$bookingId) {
+            return redirect()->route('user.bookings.index')
+                ->with('error', 'Payment session expired.');
+        }
+
+        $booking = Booking::find($bookingId);
+
+        if (!$booking) {
+            return redirect()->route('user.bookings.index')
+                ->with('error', 'Booking not found.');
+        }
+
+        if ($booking->is_paid) {
+            return redirect()->route('user.bookings.show', $booking)
+                ->with('success', 'Payment already completed!');
+        }
+
+        if ($reference) {
+            try {
+                $verification = $this->paychangu->verifyTransaction($reference);
+
+                if ($verification['success'] && $verification['status'] === 'paid') {
+                    return $this->processSuccessfulPayment($booking, $reference);
+                }
+            } catch (\Exception $e) {
+                Log::error('Payment verification error: ' . $e->getMessage());
+            }
+        }
+
+        return redirect()->route('user.bookings.payment', $booking)
+            ->with('error', 'Payment was not completed. Please try again.');
+    }
+
+    /**
+ * Handle PayChangu webhook.
+ */
+/**
+ * Handle PayChangu webhook.
+ */
+public function handleWebhook(Request $request)
+{
+    Log::info('📨 Webhook received', ['payload' => $request->all()]);
+
+    try {
+        $payload = $request->all();
+        
+        // Get webhook secret from config
+        $webhookSecret = config('paychangu.webhook_secret');
+        
+        // Verify signature if secret is set
+        if ($webhookSecret) {
+            $signature = $request->header('Signature');
+            $computedSignature = hash_hmac('sha256', $request->getContent(), $webhookSecret);
+            
+            if ($computedSignature !== $signature) {
+                Log::warning('❌ Invalid webhook signature');
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+        }
+
+        // Extract payment data
+        $eventType = $payload['event'] ?? $payload['event_type'] ?? null;
+        $paymentData = $payload['data'] ?? $payload;
+        
+        // Check if it's a successful payment
+        if ($eventType === 'charge.completed' || ($paymentData['status'] ?? null) === 'paid') {
+            $reference = $paymentData['reference'] ?? $payload['reference'] ?? null;
+            $bookingId = $paymentData['meta']['booking_id'] ?? $payload['booking_id'] ?? null;
+
+            if ($bookingId && $reference) {
+                $booking = Booking::find($bookingId);
+                
+                if ($booking && !$booking->is_paid) {
+                    // Verify with PayChangu
+                    $verification = $this->paychangu->verifyTransaction($reference);
+                    
+                    if ($verification['success'] && $verification['status'] === 'paid') {
+                        return $this->processSuccessfulPayment($booking, $reference);
+                    }
+                }
+            }
+        }
+
+        return response()->json(['status' => 'ok'], 200);
+    } catch (\Exception $e) {
+        Log::error('❌ Webhook error: ' . $e->getMessage());
+        return response()->json(['error' => 'Internal server error'], 500);
+    }
+}    /**
+     * Process payment (redirect to payment page).
      */
     public function processPayment(Request $request, Booking $booking)
     {
@@ -280,7 +413,94 @@ class BookingController extends Controller
                 ->with('error', 'This booking cannot be paid for.');
         }
 
-        return redirect()->route('payment.initiate', ['booking' => $booking->id]);
+        return redirect()->route('user.bookings.payment', $booking)
+            ->with('info', 'Please complete payment for your booking.');
+    }
+
+    /**
+     * Process successful payment.
+     */
+    protected function processSuccessfulPayment(Booking $booking, $transactionId)
+    {
+        DB::transaction(function () use ($booking, $transactionId) {
+            Payment::create([
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'transaction_id' => $transactionId,
+                'amount' => $booking->total_price,
+                'net_amount' => $booking->total_price, // ← ADDED
+                'payment_method' => 'paychangu',
+                'status' => 'completed',
+                'payment_date' => now(),
+            ]);
+
+            $booking->update([
+                'is_paid' => true,
+                'status' => 'confirmed',
+                'payment_date' => now(),
+            ]);
+
+            if ($booking->advertisement && $booking->advertisement->available_seats > 0) {
+                $booking->advertisement->decrement('available_seats', $booking->number_of_seats);
+            }
+        });
+
+        session()->forget(['pending_ride_booking_id', 'pending_ride_tx_ref']);
+
+        Log::info('✅ Booking payment processed successfully', ['booking_id' => $booking->id]);
+
+        return redirect()->route('user.bookings.show', $booking)
+            ->with('success', '✅ Payment successful! Booking confirmed.');
+    }
+
+    /**
+     * Manually verify payment for a booking.
+     */
+    public function manualVerify(Request $request)
+    {
+        $request->validate([
+            'booking_id' => 'required|exists:bookings,id'
+        ]);
+
+        $booking = Booking::find($request->booking_id);
+
+        if ($booking->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($booking->status !== 'pending') {
+            return back()->with('error', 'Booking is not pending.');
+        }
+
+        if ($booking->is_paid) {
+            return back()->with('error', 'Booking is already paid.');
+        }
+
+        DB::transaction(function () use ($booking) {
+            Payment::create([
+                'booking_id' => $booking->id,
+                'user_id' => $booking->user_id,
+                'transaction_id' => 'MANUAL-' . time() . '-' . $booking->id,
+                'amount' => $booking->total_price,
+                'net_amount' => $booking->total_price, // ← ADDED
+                'payment_method' => 'manual',
+                'status' => 'completed',
+                'payment_date' => now(),
+            ]);
+
+            $booking->update([
+                'is_paid' => true,
+                'status' => 'confirmed',
+                'payment_date' => now(),
+            ]);
+
+            if ($booking->advertisement && $booking->advertisement->available_seats > 0) {
+                $booking->advertisement->decrement('available_seats', $booking->number_of_seats);
+            }
+        });
+
+        return redirect()->route('user.bookings.show', $booking)
+            ->with('success', '✅ Payment verified manually! Booking confirmed.');
     }
 
     // ============================================================
@@ -301,7 +521,6 @@ class BookingController extends Controller
         }
 
         DB::transaction(function () use ($booking) {
-            // Restore seats
             $booking->advertisement->increment('available_seats', $booking->number_of_seats);
             $booking->update(['status' => 'cancelled']);
         });
@@ -328,18 +547,15 @@ class BookingController extends Controller
      */
     public function startTrip(Booking $booking)
     {
-        // Debug logging
         Log::info('🔥 startTrip called for booking ID: ' . $booking->id);
         Log::info('Current trip_status: ' . $booking->trip_status);
         Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
 
-        // Check authorization - passenger can start trip
         if ($booking->user_id !== Auth::id()) {
             Log::error('❌ Unauthorized: User ' . Auth::id() . ' tried to start booking ' . $booking->id);
             abort(403, 'Unauthorized action.');
         }
 
-        // Validate booking status
         if ($booking->status !== 'confirmed') {
             Log::error('❌ Booking not confirmed: ' . $booking->status);
             return back()->with('error', 'Booking must be confirmed to start trip.');
@@ -353,7 +569,6 @@ class BookingController extends Controller
             return back()->with('error', 'Trip is already in progress.');
         }
 
-        // Update the booking
         $booking->update([
             'trip_status' => 'in_progress',
             'trip_started_at' => now(),
@@ -369,12 +584,10 @@ class BookingController extends Controller
      */
     public function completeTrip(Booking $booking)
     {
-        // Debug logging
         Log::info('🔥 completeTrip called for booking ID: ' . $booking->id);
         Log::info('Current trip_status: ' . $booking->trip_status);
         Log::info('User ID: ' . Auth::id() . ', Booking user_id: ' . $booking->user_id);
 
-        // Allow passenger to complete trip
         if ($booking->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
@@ -388,7 +601,6 @@ class BookingController extends Controller
         }
 
         DB::transaction(function () use ($booking) {
-            // Calculate platform fee and owner earnings if not set
             if ($booking->platform_fee === null) {
                 $booking->platform_fee = $booking->total_price * 0.20;
                 $booking->owner_earnings = $booking->total_price * 0.80;

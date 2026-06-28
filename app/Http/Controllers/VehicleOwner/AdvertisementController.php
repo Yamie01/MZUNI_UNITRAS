@@ -90,92 +90,81 @@ public function create()
      * Store a new advertisement.
      */
     public function store(Request $request)
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
+    
+    $validator = Validator::make($request->all(), [
+        'vehicle_id' => [
+            'required',
+            'exists:vehicles,id',
+            function ($attribute, $value, $fail) use ($user) {
+                $vehicle = Vehicle::find($value);
+                if (!$vehicle || $vehicle->owner_id !== $user->id) {
+                    $fail('Invalid vehicle selected.');
+                }
+                if ($vehicle && !$vehicle->is_approved) {
+                    $fail('Vehicle must be approved first.');
+                }
+            },
+        ],
+        // REMOVE title and description
+        // 'title' => 'required|string|max:255',
+        // 'description' => 'required|string|min:20|max:2000',
+        'ad_type' => 'required|in:ride_share,taxi,bus,bike_share',
+        'route' => 'required|string|max:255', // ← ADD THIS
+        'from_location_id' => 'required|exists:locations,id',
+        'to_location_id' => 'required|exists:locations,id',
+        'departure_time' => 'required|date|after:now',
+        'price' => 'required|numeric|min:0',
+        'total_seats' => 'required|integer|min:1',
+        'available_seats' => 'required|integer|min:0|lte:total_seats',
+        'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
-        $validator = Validator::make($request->all(), [
-            'vehicle_id' => [
-                'required',
-                'exists:vehicles,id',
-                function ($attribute, $value, $fail) use ($user) {
-                    $vehicle = Vehicle::find($value);
-                    if (!$vehicle || $vehicle->owner_id !== $user->id) {
-                        $fail('Invalid vehicle selected.');
-                    }
-                    if ($vehicle && !$vehicle->is_approved) {
-                        $fail('Vehicle must be approved first.');
-                    }
-                },
-            ],
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|min:20|max:2000',
-            'ad_type' => 'required|in:ride_share,taxi,bus,bike_share',
-            // ✅ FIXED: Use location IDs instead of text
-            'from_location_id' => 'required|exists:locations,id',
-            'to_location_id' => 'required|exists:locations,id',
-            'departure_time' => 'required|date|after:now',
-            'arrival_time' => 'nullable|date|after:departure_time',
-            'price' => 'required|numeric|min:0',
-            'total_seats' => 'required|integer|min:1',
-            'available_seats' => 'required|integer|min:0|lte:total_seats',
-            'route_points' => 'nullable|json',
-            'amenities' => 'nullable|array',
-            'amenities.*' => 'string',
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        // Get location names for fallback text fields
-        $fromLocation = Location::find($request->from_location_id);
-        $toLocation = Location::find($request->to_location_id);
-
-        $vehicle = Vehicle::find($request->vehicle_id);
-        $status = $vehicle->is_approved ? 'approved' : 'pending';
-        $slug = Str::slug($request->title) . '-' . uniqid();
-
-        $advertisement = VehicleAdvertisement::create([
-            'vehicle_id' => $request->vehicle_id,
-            'owner_id' => $user->id,
-            'title' => $request->title,
-            'slug' => $slug,
-            'description' => $request->description,
-            'ad_type' => $request->ad_type,
-            // ✅ Store both the ID and the name (for backward compatibility)
-            'from_location_id' => $request->from_location_id,
-            'to_location_id' => $request->to_location_id,
-            'from_location' => $fromLocation ? $fromLocation->name : null,
-            'to_location' => $toLocation ? $toLocation->name : null,
-            'departure_time' => $request->departure_time,
-            'arrival_time' => $request->arrival_time,
-            'price' => $request->price,
-            'total_seats' => $request->total_seats,
-            'available_seats' => $request->available_seats,
-            'route_points' => $request->route_points ? json_decode($request->route_points, true) : null,
-            'amenities' => $request->amenities,
-            'status' => $status,
-        ]);
-
-        if ($request->hasFile('images')) {
-            $images = [];
-            foreach ($request->file('images') as $image) {
-                $path = $image->store('advertisements/' . $advertisement->id, 'public');
-                $images[] = $path;
-            }
-            $advertisement->update(['images' => $images]);
-        }
-
-        $message = $status === 'approved'
-            ? 'Advertisement published immediately!'
-            : 'Advertisement created. Waiting for vehicle approval first.';
-
-        return redirect()->route('vehicle-owner.advertisements.index')
-            ->with('success', $message);
+    if ($validator->fails()) {
+        return back()->withErrors($validator)->withInput();
     }
 
+    // Get the vehicle
+    $vehicle = Vehicle::find($request->vehicle_id);
+    
+    // Determine status
+    $status = $vehicle->is_approved ? 'approved' : 'pending';
+    
+    // Create slug from route (NEW)
+    $slug = Str::slug($request->route) . '-' . uniqid();
+
+    // Create advertisement
+    $advertisement = VehicleAdvertisement::create([
+        'vehicle_id' => $request->vehicle_id,
+        'owner_id' => $user->id,
+        'title' => $request->route, // Use route as title
+        'slug' => $slug,
+        'description' => 'Ride from ' . $request->from_location_id . ' to ' . $request->to_location_id,
+        'ad_type' => $request->ad_type,
+        'from_location_id' => $request->from_location_id,
+        'to_location_id' => $request->to_location_id,
+        'departure_time' => $request->departure_time,
+        'price' => $request->price,
+        'total_seats' => $request->total_seats,
+        'available_seats' => $request->available_seats,
+        'status' => $status,
+        'route' => $request->route, // Store the route
+    ]);
+
+    // Handle image upload
+    if ($request->hasFile('image')) {
+        $path = $request->file('image')->store('advertisements/' . $advertisement->id, 'public');
+        $advertisement->update(['image' => $path]);
+    }
+
+    $message = $status === 'approved' 
+        ? 'Ride published immediately!' 
+        : 'Ride created. Waiting for approval.';
+
+    return redirect()->route('vehicle-owner.advertisements.index')
+        ->with('success', $message);
+}
     /**
      * Display a single advertisement.
      */
@@ -215,63 +204,55 @@ public function create()
      * Update an advertisement.
      */
     public function update(Request $request, VehicleAdvertisement $advertisement)
-    {
-        if ($advertisement->owner_id !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $validator = Validator::make($request->all(), [
-            'vehicle_id' => [
-                'required',
-                'exists:vehicles,id',
-                function ($attribute, $value, $fail) {
-                    $vehicle = Vehicle::find($value);
-                    if ($vehicle && !$vehicle->is_approved) {
-                        $fail('Vehicle must be approved first.');
-                    }
-                },
-            ],
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|min:20|max:2000',
-            'ad_type' => 'required|in:ride_share,taxi,bus,bike_share',
-            // ✅ FIXED: Use location IDs
-            'from_location_id' => 'required|exists:locations,id',
-            'to_location_id' => 'required|exists:locations,id',
-            'departure_time' => 'required|date|after:now',
-            'arrival_time' => 'nullable|date|after:departure_time',
-            'price' => 'required|numeric|min:0',
-            'total_seats' => 'required|integer|min:1',
-            'available_seats' => 'required|integer|min:0|lte:total_seats',
-        ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        // Get location names for fallback text fields
-        $fromLocation = Location::find($request->from_location_id);
-        $toLocation = Location::find($request->to_location_id);
-
-        $advertisement->update([
-            'vehicle_id' => $request->vehicle_id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'ad_type' => $request->ad_type,
-            'from_location_id' => $request->from_location_id,
-            'to_location_id' => $request->to_location_id,
-            'from_location' => $fromLocation ? $fromLocation->name : null,
-            'to_location' => $toLocation ? $toLocation->name : null,
-            'departure_time' => $request->departure_time,
-            'arrival_time' => $request->arrival_time,
-            'price' => $request->price,
-            'total_seats' => $request->total_seats,
-            'available_seats' => $request->available_seats,
-            'status' => 'pending',
-        ]);
-
-        return redirect()->route('vehicle-owner.advertisements.index')
-            ->with('success', 'Advertisement updated successfully. Pending re-approval.');
+{
+    // Ensure ownership
+    if ($advertisement->owner_id !== Auth::id()) {
+        abort(403, 'Unauthorized action.');
     }
+
+    $validator = Validator::make($request->all(), [
+        'vehicle_id' => [
+            'required',
+            'exists:vehicles,id',
+            function ($attribute, $value, $fail) {
+                $vehicle = Vehicle::find($value);
+                if ($vehicle && !$vehicle->is_approved) {
+                    $fail('Vehicle must be approved first.');
+                }
+            },
+        ],
+        // REMOVE title and description
+        'route' => 'required|string|max:255',
+        'ad_type' => 'required|in:ride_share,taxi,bus,bike_share',
+        'from_location_id' => 'required|exists:locations,id',
+        'to_location_id' => 'required|exists:locations,id',
+        'departure_time' => 'required|date|after:now',
+        'price' => 'required|numeric|min:0',
+        'total_seats' => 'required|integer|min:1',
+        'available_seats' => 'required|integer|min:0|lte:total_seats',
+    ]);
+
+    if ($validator->fails()) {
+        return back()->withErrors($validator)->withInput();
+    }
+
+    $advertisement->update([
+        'vehicle_id' => $request->vehicle_id,
+        'title' => $request->route,
+        'route' => $request->route,
+        'ad_type' => $request->ad_type,
+        'from_location_id' => $request->from_location_id,
+        'to_location_id' => $request->to_location_id,
+        'departure_time' => $request->departure_time,
+        'price' => $request->price,
+        'total_seats' => $request->total_seats,
+        'available_seats' => $request->available_seats,
+        'status' => 'pending',
+    ]);
+
+    return redirect()->route('vehicle-owner.advertisements.index')
+        ->with('success', 'Advertisement updated successfully. Pending re-approval.');
+}
 
     /**
      * Delete an advertisement.

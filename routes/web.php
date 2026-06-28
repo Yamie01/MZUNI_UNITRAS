@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 // Controllers
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\OfferRideController;
@@ -46,17 +45,9 @@ use App\Http\Controllers\User\BikeRentalPaymentController;
 | Web Routes
 |--------------------------------------------------------------------------
 */
-Route::post('/test-rent/{bike}', [App\Http\Controllers\User\BikeRentalController::class, 'processRent'])->name('test.rent');
 
 // ================================
-// 1. PUBLIC WEBHOOK – NO CSRF, NO AUTH
-// ================================
-Route::post('/api/bike-rental/webhook', [PaymentController::class, 'handleWebhook'])
-    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
-    ->name('api.bike-rental.webhook');
-
-// ================================
-// 2. PUBLIC ROUTES
+// 1. PUBLIC ROUTES
 // ================================
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/search', [HomeController::class, 'search'])->name('search');
@@ -65,15 +56,8 @@ Route::get('/search', [HomeController::class, 'search'])->name('search');
 require __DIR__.'/auth.php';
 
 // ================================
-// 3. PAYMENT CALLBACKS (public)
+// 2. PAYMENT CALLBACKS (public)
 // ================================
-Route::prefix('payment')->name('payment.')->group(function () {
-    Route::get('/return', [PaymentController::class, 'handleReturn'])->name('return');
-    Route::get('/cancel', [PaymentController::class, 'handleCancel'])->name('cancel');
-    Route::post('/webhook', [PaymentController::class, 'handleWebhook'])->name('webhook');
-    Route::post('/manual-verify', [PaymentController::class, 'manualVerify'])->name('manual-verify')->middleware('auth');
-});
-
 Route::get('/bike-rental/payment/return', [BikeRentalPaymentController::class, 'handleReturn'])
     ->name('user.bike-rentals.payment.return');
 
@@ -85,7 +69,7 @@ Route::post('/store-redirect', function (Request $request) {
 })->name('store.redirect');
 
 // ================================
-// 4. AUTHENTICATED USER ROUTES
+// 3. AUTHENTICATED USER ROUTES
 // ================================
 Route::middleware('auth')->group(function () {
 
@@ -123,15 +107,24 @@ Route::middleware('auth')->group(function () {
         Route::match(['GET', 'POST'], '/{booking}/pay', [UserBookingController::class, 'initiatePayment'])->name('payment.initiate');
     });
 
+    // Payment return route
+    Route::get('/payment/return', [UserBookingController::class, 'paymentReturn'])->name('payment.return');
+
+
+// Webhook route - must be POST and public (no auth)
+Route::post('/api/bike-rental/webhook', [App\Http\Controllers\User\BookingController::class, 'handleWebhook'])
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])
+    ->name('api.bike-rental.webhook');
+    // Manual verification
+    Route::post('/payment/manual-verify', [UserBookingController::class, 'manualVerify'])
+        ->name('payment.manual-verify');
+
     Route::get('/booking/check-subscription/{advertisement}', [UserBookingController::class, 'checkSubscriptionEligibility'])
         ->name('user.bookings.check-subscription');
 
     // Trip management (user)
     Route::post('/bookings/{booking}/start-trip', [UserBookingController::class, 'startTrip'])->name('user.bookings.start-trip');
     Route::post('/bookings/{booking}/complete-trip', [UserBookingController::class, 'completeTrip'])->name('user.bookings.complete-trip');
-
-    // Alternative payment initiation (legacy)
-    Route::get('/payment/{booking}', [PaymentController::class, 'initiate'])->name('payment.initiate');
 
     // ------------------------------
     // BIKE RENTAL
@@ -152,10 +145,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/{rental}/initiate-payment', [BikeRentalController::class, 'initiatePayment'])->name('initiate-payment');
         Route::post('/{rental}/mark-paid', [BikeRentalController::class, 'markAsPaid'])->name('mark-paid');
     });
+
+    // ------------------------------
+    // TRACKING
+    // ------------------------------
+    Route::get('/tracking/ride/{booking}', [TrackingController::class, 'showTracking'])->name('tracking.ride');
+    Route::get('/tracking/bike/{rental}', [TrackingController::class, 'showBikeTracking'])->name('tracking.bike');
 });
 
 // ================================
-// 5. VEHICLE OWNER ROUTES
+// 4. VEHICLE OWNER ROUTES
 // ================================
 Route::prefix('vehicle-owner')
     ->name('vehicle-owner.')
@@ -185,7 +184,7 @@ Route::prefix('vehicle-owner')
     });
 
 // ================================
-// 6. ADMIN ROUTES
+// 5. ADMIN ROUTES
 // ================================
 Route::prefix('admin')
     ->name('admin.')
@@ -238,12 +237,13 @@ Route::prefix('admin')
     });
 
 // ================================
-// 7. TEST & DEBUG ROUTES (local only)
+// 6. TEST & DEBUG ROUTES (local only)
 // ================================
-// TEMPORARY - Direct route for testing
-Route::post('/bikes/{bike}/rent', [App\Http\Controllers\User\BikeRentalController::class, 'processRent'])
-    ->middleware('auth')
-    ->name('user.bikes.rent.process');
+
+// Webhook route
+Route::post('/api/bike-rental/webhook', function() {
+    return response()->json(['status' => 'ok'], 200);
+})->name('api.bike-rental.webhook');
 
 Route::get('/test-payment-class', function() {
     return class_exists('App\Http\Controllers\PaymentController') ? 'Class exists!' : 'Class not found!';

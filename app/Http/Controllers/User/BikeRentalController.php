@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bike;
 use App\Models\BikeRental;
 use App\Models\Location;
+use App\Models\Payment;
 use App\Services\PayChanguService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,73 +59,102 @@ class BikeRentalController extends Controller
      * Activate bike rental with verification.
      */
     public function processRent(Request $request, Bike $bike)
-{
-    Log::info('processRent called', $request->all());
-    
-    $user = auth()->user();
+    {
+        Log::info('🚲 processRent called', [
+            'bike_id' => $bike->id,
+            'user_id' => auth()->id(),
+            'all' => $request->all()
+        ]);
 
-    // Check if user already has active rental
-    $activeRental = BikeRental::where('user_id', $user->id)
-        ->where('status', 'active')
-        ->first();
+        $user = auth()->user();
 
-    if ($activeRental) {
-        return back()->with('error', 'You already have an active bike rental. Please return it first.');
+        // Check if user already has active rental
+        $activeRental = BikeRental::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($activeRental) {
+            return back()->with('error', 'You already have an active bike rental. Please return it first.');
+        }
+
+        // Validate request
+        $request->validate([
+            'registration_number' => 'required|string|max:50',
+            'phone_number' => 'required|regex:/^[0-9]{10}$/',
+            'pickup_location' => 'required|string',
+            'dropoff_location' => 'required|string',
+        ]);
+
+        // ============================================================
+        // 🔐 VERIFY CREDENTIALS - Using User model helper methods
+        // ============================================================
+        
+        // Check if user has valid registration number
+        if (!$user->hasValidRegistrationNumber($request->registration_number)) {
+            return back()->with('error', '❌ Invalid Registration/Staff ID. Please enter the ID you used when registering.')
+                ->withInput();
+        }
+
+        // Check if user has valid phone number
+        if (!$user->hasValidPhoneNumber($request->phone_number)) {
+            return back()->with('error', '❌ Invalid Phone Number. Please enter the phone number you used when registering.')
+                ->withInput();
+        }
+
+        // Check if bike is still available
+        if (!$bike->isAvailable()) {
+            return back()->with('error', 'This bike is no longer available.');
+        }
+
+        try {
+            DB::transaction(function () use ($request, $bike, $user, &$rental) {
+                // Generate rental code
+                $rentalCode = 'BIKE-' . strtoupper(uniqid());
+
+                // Create rental record
+                $rental = BikeRental::create([
+                    'rental_code' => $rentalCode,
+                    'bike_id' => $bike->id,
+                    'user_id' => $user->id,
+                    'registration_number' => $request->registration_number,
+                    'phone_number' => $request->phone_number,
+                    'pickup_location' => $request->pickup_location,
+                    'dropoff_location' => $request->dropoff_location,
+                    'start_time' => now(),
+                    'duration' => 1,
+                    'duration_type' => 'hourly',
+                    'rate_per_unit' => 2.00,
+                    'subtotal' => 0,
+                    'total_amount' => 0,
+                    'status' => 'active',
+                    'is_paid' => false,
+                    'rate_per_minute' => 2.00,
+                ]);
+
+                Log::info('Rental created', ['rental_id' => $rental->id]);
+
+                // Update bike status to 'rented'
+                $bike->update([
+                    'status' => 'rented',
+                    'current_renter_id' => $user->id,
+                ]);
+
+                Log::info('Bike updated', ['bike_id' => $bike->id]);
+
+                // Store in session
+                session(['active_rental_id' => $rental->id]);
+            });
+
+            Log::info('Transaction completed successfully');
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('success', '🚲 Bike activated successfully! Rate: MWK 2 per minute.');
+
+        } catch (\Exception $e) {
+            Log::error('Activation failed', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to activate bike: ' . $e->getMessage());
+        }
     }
 
-    // Validate request - Use registration_number instead of university_id
-    $request->validate([
-        'registration_number' => 'required|string|max:50',
-        'phone_number' => 'required|regex:/^[0-9]{10}$/',
-        'pickup_location' => 'required|string',
-        'dropoff_location' => 'required|string',
-    ]);
-
-    // Check if bike is still available
-    if (!$bike->isAvailable()) {
-        return back()->with('error', 'This bike is no longer available.');
-    }
-
-    try {
-        DB::transaction(function () use ($request, $bike, $user) {
-            // Generate rental code
-            $rentalCode = BikeRental::generateRentalCode();
-
-            // Create rental record
-            $rental = BikeRental::create([
-                'rental_code' => $rentalCode,
-                'bike_id' => $bike->id,
-                'user_id' => $user->id,
-                'registration_number' => $request->registration_number,
-                'phone_number' => $request->phone_number,
-                'pickup_location' => $request->pickup_location,
-                'dropoff_location' => $request->dropoff_location,
-                'start_time' => now(),
-                'status' => 'active',
-                'is_paid' => false,
-                'rate_per_minute' => 2.00,
-            ]);
-
-            Log::info('Rental created', ['rental_id' => $rental->id]);
-
-            // Update bike status
-            $bike->markAsActive($user->id);
-
-            Log::info('Bike updated', ['bike_id' => $bike->id]);
-
-            // Store in session
-            session(['active_rental_id' => $rental->id]);
-        });
-
-        Log::info('Transaction completed successfully');
-        return redirect()->route('user.bike-rentals.show', $rental)
-            ->with('success', '🚲 Bike activated successfully! Rate: MWK 2 per minute.');
-
-    } catch (\Exception $e) {
-        Log::error('Activation failed', ['error' => $e->getMessage()]);
-        return back()->with('error', 'Failed to activate bike: ' . $e->getMessage());
-    }
-}
     // ============================================================
     // 3. DISPLAY RENTALS
     // ============================================================
@@ -277,7 +307,20 @@ class BikeRentalController extends Controller
             return back()->with('error', 'This rental is already paid.');
         }
 
-        $rental->markAsPaid('manual');
+        DB::transaction(function () use ($rental) {
+            Payment::create([
+                'bike_rental_id' => $rental->id,
+                'user_id' => $rental->user_id,
+                'transaction_id' => 'MANUAL-' . time() . '-' . $rental->id,
+                'amount' => $rental->total_amount,
+                'net_amount' => $rental->total_amount,
+                'payment_method' => 'manual',
+                'status' => 'completed',
+                'payment_date' => now(),
+            ]);
+
+            $rental->markAsPaid('manual');
+        });
 
         return redirect()->route('user.bike-rentals.show', $rental)
             ->with('success', '✅ Payment completed successfully! Amount: MWK ' . number_format($rental->total_amount, 2));

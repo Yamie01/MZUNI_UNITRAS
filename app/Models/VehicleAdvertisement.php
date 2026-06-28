@@ -93,6 +93,8 @@ class VehicleAdvertisement extends Model
         'is_recurring'            => 'boolean',
         'view_count'              => 'integer',
         'booking_count'           => 'integer',
+        'route', // ← ADD THIS
+        'image', // ← ADD THIS
     ];
 
     /*

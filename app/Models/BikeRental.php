@@ -12,34 +12,27 @@ class BikeRental extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'rental_code',
-        'bike_id',
-        'user_id',
-        'registration_number',
-        'phone_number',
-        'pickup_location',
-        'dropoff_location',
-        'start_time',
-        'end_time',
-        'total_minutes',
-        'rate_per_minute',
-        'total_amount',
-        'status',
-        'is_paid',
-        'payment_date',
-        'payment_method',
-        'damage_report',
-        'damage_charge',
-        'refund_amount',
-        'actual_return_time',
-        'paid_at',
-        'pickup_latitude',
-        'pickup_longitude',
-        'dropoff_latitude',
-        'dropoff_longitude',
-        'notes',
-    ];
-
+    'rental_code',
+    'bike_id',
+    'user_id',
+    'registration_number',
+    'phone_number',
+    'pickup_location',
+    'dropoff_location',
+    'start_time',
+    'end_time',
+    'duration',
+    'duration_type',
+    'rate_per_unit',
+    'subtotal',      // ← ADD THIS
+    'total_amount',  // ← ADD THIS
+    'total_minutes',
+    'rate_per_minute',
+    'status',
+    'is_paid',
+    'payment_date',
+    'payment_method',
+];
     /**
      * The attributes that should be cast.
      *
