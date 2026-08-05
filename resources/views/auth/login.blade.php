@@ -1,116 +1,233 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login - Mzuni UNITRAS</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        body {
-            background: linear-gradient(135deg, #00529b 0%, #003f75 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-container { max-width: 450px; width: 100%; margin: 20px; }
-        .login-card { background: white; border-radius: 12px; box-shadow: 0 20px 35px rgba(0,0,0,0.2); padding: 40px; }
-        .logo-section { text-align: center; margin-bottom: 30px; }
-        .logo-img { max-height: 60px; margin-bottom: 15px; }
-        .logo-title { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 5px; }
-        .logo-subtitle { font-size: 12px; color: #666; letter-spacing: 1px; }
-        .info-banner { background: #e8f0fe; border-left: 4px solid #00529b; padding: 10px 15px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; color: #00529b; }
-        .form-group { margin-bottom: 20px; }
-        .form-label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px; }
-        .form-control { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        .form-control:focus { outline: none; border-color: #00529b; box-shadow: 0 0 0 3px rgba(0,82,155,0.1); }
-        .btn-login { width: 100%; padding: 12px; background: linear-gradient(135deg, #00529b 0%, #003f75 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
-        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,82,155,0.3); }
-        .remember-forgot { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #666; }
-        .forgot-link { font-size: 14px; color: #00529b; text-decoration: none; }
-        .register-link { text-align: center; margin-top: 20px; font-size: 14px; }
-        .register-link a { color: #00529b; text-decoration: none; font-weight: 500; }
-        .copyright { text-align: center; margin-top: 20px; font-size: 12px; color: rgba(255,255,255,0.8); }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="logo-section">
-                <img src="{{ asset('images/mzuni-logo.png') }}" alt="Mzuni UNITRAS" class="logo-img" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%2300529b%22/%3E%3Ctext x=%2250%22 y=%2250%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22white%22 font-size=%2240%22%3EMU%3C/text%3E%3C/svg%3E'">
-                <div class="logo-title">Mzuni UNITRAS</div>
-                <div class="logo-subtitle">Mzuzu University - Unified Transport System</div>
+@extends('layouts.app')
+
+@section('title', 'Login - Mzuni UNITRAS')
+
+@section('content')
+<div class="login-page">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-md-6 col-lg-5">
+                <div class="login-card">
+                    <!-- Logo -->
+                    <div class="text-center mb-4">
+                        <img src="{{ asset('images/mzuni-logo.png') }}" alt="Mzuni University" height="60" class="mb-2">
+                        <h4 class="fw-bold text-mzuni-green">Mzuni UNITRAS</h4>
+                        <p class="text-muted small">Mzuzu University - Unified Transport System</p>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form method="POST" action="{{ route('login') }}">
+                        @csrf
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-semibold">Email address</label>
+                            <input id="email" type="email" 
+                                class="form-control @error('email') is-invalid @enderror" 
+                                name="email" value="{{ old('email') }}" 
+                                placeholder="your.email@mzuni.ac.mw" required autofocus>
+                            @error('email')
+                                <span class="invalid-feedback">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <!-- Password -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label fw-semibold">Password</label>
+                            <div class="position-relative">
+                                <input id="password" type="password" 
+                                    class="form-control @error('password') is-invalid @enderror" 
+                                    name="password" placeholder="Enter your password" required>
+                                <button type="button" class="btn btn-link position-absolute end-0 top-0 text-muted" 
+                                    onclick="togglePassword()" style="padding: 0.6rem 1rem;">
+                                    <i class="fas fa-eye" id="passwordToggle"></i>
+                                </button>
+                            </div>
+                            @error('password')
+                                <span class="invalid-feedback">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <!-- Remember Me & Forgot Password -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
+                                <label class="form-check-label small" for="remember">Remember me</label>
+                            </div>
+                            @if (Route::has('password.request'))
+                                <a href="{{ route('password.request') }}" class="small text-mzuni-green">Forgot password?</a>
+                            @endif
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                            <i class="fas fa-sign-in-alt me-2"></i> Sign in
+                        </button>
+                    </form>
+
+                    <!-- Register Link -->
+                    <div class="text-center mt-3">
+                        <p class="small text-muted">
+                            Don't have an account? 
+                            <a href="{{ route('register') }}" class="text-mzuni-green fw-semibold">Create account</a>
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <p class="small text-muted mb-0">&copy; {{ date('Y') }} Mzuzu University. All rights reserved.</p>
+                    </div>
+                </div>
             </div>
-
-            {{-- Show redirect info --}}
-            @php
-                $redirectTo = request()->query('redirect_to');
-            @endphp
-            @if($redirectTo)
-                <div class="info-banner">
-                    <i class="fas fa-info-circle me-2"></i>
-                    After login, you will continue with your {{ str_contains($redirectTo, 'book') ? 'ride booking' : 'bike rental' }}.
-                </div>
-            @endif
-
-            @if(session('status'))
-                <div class="alert alert-success">{{ session('status') }}</div>
-            @endif
-
-            @if($errors->any())
-                <div class="alert alert-danger">
-                    @foreach($errors->all() as $error)
-                        <p class="mb-0">{{ $error }}</p>
-                    @endforeach
-                </div>
-            @endif
-
-            <form method="POST" action="{{ route('login') }}">
-                @csrf
-                
-                {{-- ✅ CRITICAL: Preserve redirect_to parameter --}}
-                @if($redirectTo)
-                    <input type="hidden" name="redirect_to" value="{{ $redirectTo }}">
-                @endif
-
-                <div class="form-group">
-                    <label class="form-label">Email address</label>
-                    <input type="email" name="email" value="{{ old('email') }}" class="form-control" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" required>
-                </div>
-
-                <div class="remember-forgot">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="remember"> Remember me
-                    </label>
-                    @if (Route::has('password.request'))
-                        <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
-                    @endif
-                </div>
-
-                <button type="submit" class="btn-login">Sign in</button>
-
-                <div class="register-link">
-                    Don't have an account? 
-                    <a href="{{ route('register') }}@if($redirectTo)?redirect_to={{ $redirectTo }}@endif">
-                        Create account
-                    </a>
-                </div>
-            </form>
-        </div>
-        <div class="copyright">
-            &copy; {{ date('Y') }} Mzuzu University. All rights reserved.
         </div>
     </div>
-</body>
-</html>
+</div>
+
+<style>
+    /* ===== LOGIN PAGE STYLES ===== */
+    .login-page {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #00693E 0%, #004d2e 50%, #003d23 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Background decoration */
+    .login-page::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 600px;
+        height: 600px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .login-page::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 400px;
+        height: 400px;
+        background: rgba(255, 215, 0, 0.04);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    /* Login Card */
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        z-index: 1;
+    }
+
+    .login-card .text-mzuni-green {
+        color: #00693E;
+    }
+
+    .login-card .form-control {
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        padding: 0.7rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .login-card .form-control:focus {
+        border-color: #00693E;
+        box-shadow: 0 0 0 4px rgba(0, 105, 62, 0.12);
+    }
+
+    .login-card .btn-primary {
+        background: #00693E;
+        border-color: #00693E;
+        border-radius: 12px;
+        padding: 0.8rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .login-card .btn-primary:hover {
+        background: #004d2e;
+        border-color: #004d2e;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 105, 62, 0.3);
+    }
+
+    .login-card .btn-primary:active {
+        transform: scale(0.97);
+    }
+
+    .login-card a.text-mzuni-green {
+        color: #00693E;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .login-card a.text-mzuni-green:hover {
+        color: #004d2e;
+        text-decoration: underline;
+    }
+
+    .login-card .form-check-input:checked {
+        background-color: #00693E;
+        border-color: #00693E;
+    }
+
+    /* Password toggle */
+    .login-card .btn-link {
+        text-decoration: none;
+        color: #888;
+    }
+
+    .login-card .btn-link:hover {
+        color: #555;
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .login-card {
+            padding: 1.5rem;
+            margin: 1rem;
+            border-radius: 16px;
+        }
+
+        .login-card h4 {
+            font-size: 1.3rem;
+        }
+
+        .login-card img {
+            height: 45px;
+        }
+    }
+</style>
+
+<script>
+    function togglePassword() {
+        const password = document.getElementById('password');
+        const toggle = document.getElementById('passwordToggle');
+        if (password.type === 'password') {
+            password.type = 'text';
+            toggle.classList.remove('fa-eye');
+            toggle.classList.add('fa-eye-slash');
+        } else {
+            password.type = 'password';
+            toggle.classList.remove('fa-eye-slash');
+            toggle.classList.add('fa-eye');
+        }
+    }
+</script>
+@endsection
