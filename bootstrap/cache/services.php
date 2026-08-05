@@ -38,6 +38,7 @@
     34 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     35 => 'Termwind\\Laravel\\TermwindServiceProvider',
     36 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+<<<<<<< HEAD
     37 => 'Spatie\\Permission\\PermissionServiceProvider',
     38 => 'App\\Providers\\AppServiceProvider',
     39 => 'App\\Providers\\AuthServiceProvider',
@@ -46,6 +47,17 @@
     42 => 'App\\Providers\\RouteServiceProvider',
     43 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
     44 => 'App\\Providers\\AppServiceProvider',
+=======
+    37 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
+    38 => 'Spatie\\Permission\\PermissionServiceProvider',
+    39 => 'App\\Providers\\AppServiceProvider',
+    40 => 'App\\Providers\\AuthServiceProvider',
+    41 => 'App\\Providers\\BroadcastServiceProvider',
+    42 => 'App\\Providers\\EventServiceProvider',
+    43 => 'App\\Providers\\RouteServiceProvider',
+    44 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+    45 => 'App\\Providers\\AppServiceProvider',
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
   ),
   'eager' => 
   array (
@@ -70,6 +82,7 @@
     18 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     19 => 'Termwind\\Laravel\\TermwindServiceProvider',
     20 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+<<<<<<< HEAD
     21 => 'Spatie\\Permission\\PermissionServiceProvider',
     22 => 'App\\Providers\\AppServiceProvider',
     23 => 'App\\Providers\\AuthServiceProvider',
@@ -78,6 +91,17 @@
     26 => 'App\\Providers\\RouteServiceProvider',
     27 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
     28 => 'App\\Providers\\AppServiceProvider',
+=======
+    21 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
+    22 => 'Spatie\\Permission\\PermissionServiceProvider',
+    23 => 'App\\Providers\\AppServiceProvider',
+    24 => 'App\\Providers\\AuthServiceProvider',
+    25 => 'App\\Providers\\BroadcastServiceProvider',
+    26 => 'App\\Providers\\EventServiceProvider',
+    27 => 'App\\Providers\\RouteServiceProvider',
+    28 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
+    29 => 'App\\Providers\\AppServiceProvider',
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
   ),
   'deferred' => 
   array (

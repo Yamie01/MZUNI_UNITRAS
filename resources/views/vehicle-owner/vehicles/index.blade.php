@@ -40,6 +40,26 @@
         </div>
     </div>
 
+<<<<<<< HEAD
+=======
+    <td>
+    @switch($vehicle->vetting_status)
+        @case('pending')
+            <span class="badge bg-warning">Pending</span>
+            @break
+        @case('approved')
+            <span class="badge bg-success">Approved</span>
+            @break
+        @case('manual_review')
+            <span class="badge bg-info">Manual Review</span>
+            @break
+        @case('rejected')
+            <span class="badge bg-danger">Rejected</span>
+            @break
+    @endswitch
+</td>
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>My Vehicles</h4>

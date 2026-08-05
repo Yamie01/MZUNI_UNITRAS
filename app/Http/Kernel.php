@@ -100,6 +100,10 @@ class Kernel extends HttpKernel
         // Custom Role-Based Middleware
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'vehicle.owner' => \App\Http\Middleware\VehicleOwnerMiddleware::class,
+<<<<<<< HEAD
+=======
+        'vehicle.owner' => \App\Http\Middleware\VehicleOwner::class,
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         'student' => \App\Http\Middleware\StudentMiddleware::class,
         'staff' => \App\Http\Middleware\StaffMiddleware::class,
     ];

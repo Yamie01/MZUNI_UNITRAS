@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+<<<<<<< HEAD
 @section('title', 'Bike Rental - ' . $rental->rental_code)
 
 @push('styles')
@@ -167,10 +168,194 @@
                     </div>
                 </div>
             </div>
+=======
+@section('title', 'Bike Rental Details')
+
+@section('content')
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Rental Header -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">🚲 Rental #{{ $rental->rental_code }}</h4>
+                        <span class="badge bg-{{ $rental->status === 'active' ? 'success' : ($rental->status === 'completed' ? 'info' : 'secondary') }}">
+                            {{ ucfirst($rental->status) }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Bike Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-bicycle me-2"></i>Bike Details</h6>
+                            <p class="mb-1">
+                                <strong>Brand:</strong> {{ $rental->bike->brand ?? 'N/A' }} 
+                                {{ $rental->bike->model ?? '' }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Type:</strong> {{ ucfirst($rental->bike->type ?? 'N/A') }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Location:</strong> {{ $rental->pickup_location ?? 'N/A' }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-clock me-2"></i>Rental Details</h6>
+                            <p class="mb-1">
+                                <strong>Started:</strong> 
+                                {{ $rental->start_time ? $rental->start_time->format('d M Y, H:i') : 'N/A' }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Ended:</strong> 
+                                {{ $rental->end_time ? $rental->end_time->format('d M Y, H:i') : 'Active' }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Duration:</strong> 
+                                {{ $rental->total_minutes ?? 0 }} minutes
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Cost Breakdown -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h6><i class="fas fa-calculator me-2"></i>Cost Breakdown</h6>
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <td><strong>Rate per minute</strong></td>
+                                    <td>MWK {{ number_format($rental->rate_per_minute ?? 2, 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Minutes</strong></td>
+                                    <td>{{ $rental->total_minutes ?? 0 }} minutes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Subtotal</strong></td>
+                                    <td>MWK {{ number_format($rental->subtotal ?? 0, 2) }}</td>
+                                </tr>
+                                @if(($rental->late_fee ?? 0) > 0)
+                                <tr class="text-danger">
+                                    <td><strong>Late Fee</strong></td>
+                                    <td>MWK {{ number_format($rental->late_fee, 2) }}</td>
+                                </tr>
+                                @endif
+                                <tr class="fw-bold">
+                                    <td><strong>Total Amount</strong></td>
+                                    <td>MWK {{ number_format($rental->total_amount ?? 0, 2) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Status & Actions -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <h6><i class="fas fa-info-circle me-2"></i>Status</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-{{ $rental->status === 'active' ? 'success' : ($rental->status === 'completed' ? 'info' : 'secondary') }} p-2">
+                                    <i class="fas fa-circle me-1"></i>
+                                    {{ ucfirst($rental->status) }}
+                                </span>
+                                <span class="badge bg-{{ $rental->is_paid ? 'success' : 'warning' }} p-2">
+                                    <i class="fas fa-{{ $rental->is_paid ? 'check-circle' : 'clock' }} me-1"></i>
+                                    {{ $rental->is_paid ? 'Paid' : 'Pending Payment' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex flex-wrap gap-2">
+                                @if($rental->status === 'active')
+                                    <form action="{{ route('user.bike-rentals.return', $rental) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fas fa-undo me-1"></i> Return Bike
+                                        </button>
+                                    </form>
+                                @endif
+
+                                @if($rental->status === 'completed' && !$rental->is_paid)
+                                    <a href="{{ route('user.bike-rentals.initiate-payment', $rental) }}" class="btn btn-success">
+                                        <i class="fas fa-credit-card me-1"></i> Pay Now (MWK {{ number_format($rental->total_amount ?? 0, 2) }})
+                                    </a>
+                                    <form action="{{ route('user.bike-rentals.mark-paid', $rental) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-success" onclick="return confirm('Mark this rental as paid manually?')">
+                                            <i class="fas fa-check me-1"></i> Mark as Paid (Manual)
+                                        </button>
+                                    </form>
+                                @endif
+
+                                @if($rental->status === 'active' || $rental->status === 'completed')
+                                    <a href="{{ route('user.bike-rentals.index') }}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Back to Rentals
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Timer (Active Rental) -->
+            @if($rental->status === 'active')
+            <div class="card mt-4 shadow-sm" id="liveTimer">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i> Live Timer</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4" id="timerDisplay">00:00:00</h2>
+                    <p class="text-muted">Current Cost: <strong id="costDisplay">MWK 0.00</strong></p>
+                    <p class="small text-muted">Rate: MWK {{ number_format($rental->rate_per_minute ?? 2, 2) }} per minute</p>
+                </div>
+            </div>
+            @endif
+
+            <!-- Payment History -->
+            @if($rental->payments && $rental->payments->count() > 0)
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i> Payment History</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($rental->payments as $payment)
+                            <tr>
+                                <td>{{ $payment->paid_at ? $payment->paid_at->format('d M Y, H:i') : 'N/A' }}</td>
+                                <td>MWK {{ number_format($payment->amount ?? 0, 2) }}</td>
+                                <td>{{ ucfirst($payment->payment_method ?? 'N/A') }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $payment->status === 'completed' ? 'success' : 'warning' }}">
+                                        {{ ucfirst($payment->status ?? 'N/A') }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @endif
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         </div>
     </div>
 </div>
 
+<<<<<<< HEAD
 @if($rental->status === 'active')
 <script>
     (function() {
@@ -256,4 +441,41 @@
     })();
 </script>
 @endif
+=======
+@push('scripts')
+@if($rental->status === 'active')
+<script>
+    // Live Timer Script
+    (function() {
+        const startTime = new Date('{{ $rental->start_time ? $rental->start_time->toIso8601String() : now()->toIso8601String() }}');
+        const ratePerMinute = {{ $rental->rate_per_minute ?? 2 }};
+        
+        function updateTimer() {
+            const now = new Date();
+            const diffSeconds = Math.floor((now - startTime) / 1000);
+            const minutes = Math.floor(diffSeconds / 60);
+            const seconds = diffSeconds % 60;
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            
+            // Update display
+            document.getElementById('timerDisplay').textContent = 
+                String(hours).padStart(2, '0') + ':' + 
+                String(remainingMinutes).padStart(2, '0') + ':' + 
+                String(seconds).padStart(2, '0');
+            
+            // Update cost
+            const cost = (minutes * ratePerMinute);
+            document.getElementById('costDisplay').textContent = 
+                'MWK ' + cost.toFixed(2);
+        }
+        
+        // Update every second
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    })();
+</script>
+@endif
+@endpush
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 @endsection

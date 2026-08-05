@@ -181,6 +181,47 @@
                     </div>
                 </div>
 
+<<<<<<< HEAD
+=======
+<div class="card mt-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-qrcode me-2"></i>QR Code</h5>
+    </div>
+
+    <div class="card mt-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-qrcode me-2"></i>QR Code</h5>
+    </div>
+    <div class="card-body text-center">
+        @if($bike->qr_code_path)
+            <img src="{{ asset('storage/' . $bike->qr_code_path) }}" alt="QR Code" style="max-width: 200px; border: 2px solid #ddd; border-radius: 10px; padding: 10px;">
+            <div class="mt-3">
+                <a href="{{ route('admin.bikes.download-qr', $bike) }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-download me-1"></i> Download
+                </a>
+                <a href="{{ route('admin.bikes.preview-qr', $bike) }}" class="btn btn-info btn-sm">
+                    <i class="fas fa-eye me-1"></i> Preview
+                </a>
+                <form action="{{ route('admin.bikes.generate-qr', $bike) }}" method="POST" style="display: inline-block;">
+                    @csrf
+                    <button type="submit" class="btn btn-warning btn-sm">
+                        <i class="fas fa-sync me-1"></i> Regenerate
+                    </button>
+                </form>
+            </div>
+            <p class="text-muted small mt-2">QR Code ID: <code>{{ $bike->qr_code }}</code></p>
+        @else
+            <p class="text-muted">No QR code generated.</p>
+            <form action="{{ route('admin.bikes.generate-qr', $bike) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-qrcode me-2"></i> Generate QR Code
+                </button>
+            </form>
+        @endif
+    </div>
+</div>
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 <!-- Rental History -->
                 <div class="col-12">
                     <div class="card">

@@ -11,14 +11,34 @@ class LoginController extends Controller
 {
     /**
      * Show the login form.
+<<<<<<< HEAD
      */
     public function showLoginForm()
     {
+=======
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
+     */
+    public function showLoginForm(Request $request)
+    {
+        // Store the redirect URL in session before showing login
+        if ($request->has('redirect_to')) {
+            session(['url.intended' => $request->redirect_to]);
+        }
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         return view('auth.login');
     }
 
     /**
      * Handle a login request.
+<<<<<<< HEAD
+=======
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function login(Request $request)
     {
@@ -43,12 +63,28 @@ class LoginController extends Controller
                 ]);
             }
 
+<<<<<<< HEAD
             // ✅ Get redirect_to from session or request
             $redirectTo = session('url.intended') ?? $request->input('redirect_to');
 
             if ($redirectTo && $redirectTo !== '') {
                 session()->forget('url.intended');
                 return redirect($redirectTo);
+=======
+            // Check for redirect URL from session or request
+            $redirectTo = session('url.intended') ?? $request->input('redirect_to');
+
+            if ($redirectTo) {
+                session()->forget('url.intended');
+
+                // If user is vehicle owner and redirect is offer-ride, send to publish page
+                if ($user->isVehicleOwner() && str_contains($redirectTo, 'offer-ride')) {
+                    return redirect()->route('vehicle-owner.advertisements.create')
+                        ->with('info', 'Publish your ride here.');
+                }
+
+                return redirect()->to($redirectTo);
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             }
 
             // Redirect based on user type
@@ -62,6 +98,12 @@ class LoginController extends Controller
 
     /**
      * Log the user out.
+<<<<<<< HEAD
+=======
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function logout(Request $request)
     {
@@ -74,16 +116,31 @@ class LoginController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Redirect users based on their type.
+=======
+     * Redirect users based on their user type.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Http\RedirectResponse
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     protected function redirectBasedOnUserType($user)
     {
         if ($user->user_type === 'admin') {
             return redirect()->route('admin.dashboard');
         }
+<<<<<<< HEAD
         if ($user->user_type === 'vehicle_owner') {
             return redirect()->route('vehicle-owner.dashboard');
         }
+=======
+
+        if ($user->user_type === 'vehicle_owner') {
+            return redirect()->route('vehicle-owner.dashboard');
+        }
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         return redirect()->route('dashboard');
     }
 }

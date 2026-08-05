@@ -168,6 +168,11 @@ class BikeController extends Controller
     return redirect()->route('admin.bikes.index')
         ->with('success', 'Bike updated successfully.');
     }
+<<<<<<< HEAD
+=======
+
+    
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     /**
      * Delete bike.
      */
@@ -198,6 +203,7 @@ class BikeController extends Controller
     }
 
     /**
+<<<<<<< HEAD
      * Generate QR code for bike.
      */
     public function generateQR(Bike $bike)
@@ -208,4 +214,32 @@ class BikeController extends Controller
         
         return back()->with('success', 'QR code generated.');
     }
+=======
+ * Generate QR code for a bike
+ */
+public function generateQR(Bike $bike)
+{
+    $bike->generateQRCode();
+
+    return redirect()->route('admin.bikes.show', $bike)
+        ->with('success', 'QR code generated successfully.');
+}
+
+/**
+ * Bulk generate QR codes for all bikes
+ */
+public function bulkGenerateQR()
+{
+    $bikes = Bike::whereNull('qr_code')->get();
+    $count = 0;
+
+    foreach ($bikes as $bike) {
+        $bike->generateQRCode();
+        $count++;
+    }
+
+    return redirect()->route('admin.bikes.index')
+        ->with('success', "Generated QR codes for {$count} bikes.");
+}
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 }

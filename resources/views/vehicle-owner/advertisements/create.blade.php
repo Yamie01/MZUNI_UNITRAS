@@ -50,8 +50,13 @@
                             <option value="">Select Type</option>
                             <option value="ride_share" {{ old('ad_type') == 'ride_share' ? 'selected' : '' }}>Ride Share</option>
                             <option value="taxi" {{ old('ad_type') == 'taxi' ? 'selected' : '' }}>Taxi</option>
+<<<<<<< HEAD
                             <option value="bus" {{ old('ad_type') == 'bus' ? 'selected' : '' }}>Bus</option>
                             <option value="bike_share" {{ old('ad_type') == 'bike_share' ? 'selected' : '' }}>Bike Share</option>
+=======
+                            <!--<option value="bus" {{ old('ad_type') == 'bus' ? 'selected' : '' }}>Bus</option>
+                            <option value="bike_share" {{ old('ad_type') == 'bike_share' ? 'selected' : '' }}>Bike Share</option>-->
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                         </select>
                         @error('ad_type')
                             <div class="invalid-feedback">{{ $message }}</div>

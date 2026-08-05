@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class BikeRentalController extends Controller
 {
+<<<<<<< HEAD
     protected $paychangu;
 
     public function __construct(PayChanguService $paychangu)
@@ -24,6 +25,17 @@ class BikeRentalController extends Controller
 
     // ============================================================
     // 1. SHOW ACTIVATION FORM
+=======
+    protected $payChanguService;
+
+    public function __construct(PayChanguService $payChanguService)
+    {
+        $this->payChanguService = $payChanguService;
+    }
+
+    // ============================================================
+    // 1. RENTAL ACTIVATION
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     // ============================================================
 
     /**
@@ -51,21 +63,27 @@ class BikeRentalController extends Controller
         return view('user.bikes.rent', compact('bike', 'locations'));
     }
 
+<<<<<<< HEAD
     // ============================================================
     // 2. ACTIVATE BIKE
     // ============================================================
 
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     /**
      * Activate bike rental with verification.
      */
     public function processRent(Request $request, Bike $bike)
     {
+<<<<<<< HEAD
         Log::info('🚲 processRent called', [
             'bike_id' => $bike->id,
             'user_id' => auth()->id(),
             'all' => $request->all()
         ]);
 
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         $user = auth()->user();
 
         // Check if user already has active rental
@@ -85,35 +103,50 @@ class BikeRentalController extends Controller
             'dropoff_location' => 'required|string',
         ]);
 
+<<<<<<< HEAD
         // ============================================================
         // 🔐 VERIFY CREDENTIALS - Using User model helper methods
         // ============================================================
         
         // Check if user has valid registration number
+=======
+        // Verify credentials
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         if (!$user->hasValidRegistrationNumber($request->registration_number)) {
             return back()->with('error', '❌ Invalid Registration/Staff ID. Please enter the ID you used when registering.')
                 ->withInput();
         }
 
+<<<<<<< HEAD
         // Check if user has valid phone number
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         if (!$user->hasValidPhoneNumber($request->phone_number)) {
             return back()->with('error', '❌ Invalid Phone Number. Please enter the phone number you used when registering.')
                 ->withInput();
         }
 
+<<<<<<< HEAD
         // Check if bike is still available
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         if (!$bike->isAvailable()) {
             return back()->with('error', 'This bike is no longer available.');
         }
 
         try {
             DB::transaction(function () use ($request, $bike, $user, &$rental) {
+<<<<<<< HEAD
                 // Generate rental code
                 $rentalCode = 'BIKE-' . strtoupper(uniqid());
 
                 // Create rental record
                 $rental = BikeRental::create([
                     'rental_code' => $rentalCode,
+=======
+                $rental = BikeRental::create([
+                    'rental_code' => 'BIKE-' . strtoupper(uniqid()),
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                     'bike_id' => $bike->id,
                     'user_id' => $user->id,
                     'registration_number' => $request->registration_number,
@@ -124,21 +157,31 @@ class BikeRentalController extends Controller
                     'duration' => 1,
                     'duration_type' => 'hourly',
                     'rate_per_unit' => 2.00,
+<<<<<<< HEAD
+=======
+                    'rate_per_minute' => 2.00,
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                     'subtotal' => 0,
                     'total_amount' => 0,
                     'status' => 'active',
                     'is_paid' => false,
+<<<<<<< HEAD
                     'rate_per_minute' => 2.00,
                 ]);
 
                 Log::info('Rental created', ['rental_id' => $rental->id]);
 
                 // Update bike status to 'rented'
+=======
+                ]);
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 $bike->update([
                     'status' => 'rented',
                     'current_renter_id' => $user->id,
                 ]);
 
+<<<<<<< HEAD
                 Log::info('Bike updated', ['bike_id' => $bike->id]);
 
                 // Store in session
@@ -146,17 +189,34 @@ class BikeRentalController extends Controller
             });
 
             Log::info('Transaction completed successfully');
+=======
+                session(['active_rental_id' => $rental->id]);
+            });
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             return redirect()->route('user.bike-rentals.show', $rental)
                 ->with('success', '🚲 Bike activated successfully! Rate: MWK 2 per minute.');
 
         } catch (\Exception $e) {
+<<<<<<< HEAD
             Log::error('Activation failed', ['error' => $e->getMessage()]);
+=======
+            Log::error('Bike activation failed', [
+                'bike_id' => $bike->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             return back()->with('error', 'Failed to activate bike: ' . $e->getMessage());
         }
     }
 
     // ============================================================
+<<<<<<< HEAD
     // 3. DISPLAY RENTALS
+=======
+    // 2. RENTAL MANAGEMENT
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     // ============================================================
 
     /**
@@ -168,7 +228,11 @@ class BikeRentalController extends Controller
             ->with('bike')
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         return view('user.bike-rentals.index', compact('rentals'));
     }
 
@@ -181,7 +245,10 @@ class BikeRentalController extends Controller
             abort(403);
         }
 
+<<<<<<< HEAD
         // Refresh session for active rental
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         if ($rental->status === 'active') {
             session(['active_rental_id' => $rental->id]);
         }
@@ -189,10 +256,13 @@ class BikeRentalController extends Controller
         return view('user.bike-rentals.show', compact('rental'));
     }
 
+<<<<<<< HEAD
     // ============================================================
     // 4. RETURN BIKE
     // ============================================================
 
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     /**
      * Return bike and calculate total cost.
      */
@@ -206,7 +276,10 @@ class BikeRentalController extends Controller
             return back()->with('error', 'This rental is not active.');
         }
 
+<<<<<<< HEAD
         // Calculate total minutes and cost
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         $minutes = $rental->elapsed_minutes;
         $totalCost = $minutes * $rental->rate_per_minute;
 
@@ -218,12 +291,16 @@ class BikeRentalController extends Controller
                 'status' => 'completed',
             ]);
 
+<<<<<<< HEAD
             // Update bike status to available
+=======
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             if ($rental->bike) {
                 $rental->bike->markAsAvailable();
             }
         });
 
+<<<<<<< HEAD
         // Clear session
         session()->forget('active_rental_id');
 
@@ -277,11 +354,71 @@ class BikeRentalController extends Controller
         ];
 
         Log::info('Initiating PayChangu payment for bike rental', [
+=======
+        session()->forget('active_rental_id');
+
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('success', "🚲 Bike returned successfully! Total: {$minutes} minutes = MWK " . number_format($totalCost, 2));
+    }
+
+    // ============================================================
+    // 3. PAYMENT METHODS
+    // ============================================================
+
+    /**
+ * Initiate payment for bike rental via PayChangu.
+ */
+public function initiatePayment(BikeRental $rental)
+{
+    if ($rental->user_id !== auth()->id()) {
+        abort(403);
+    }
+
+    if ($rental->is_paid) {
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('info', 'This rental has already been paid.');
+    }
+
+    if (!$rental->isCompleted()) {
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('error', 'Please return the bike first before paying.');
+    }
+
+    try {
+        if ($rental->total_amount <= 0) {
+            $rental->calculateTotalAmount();
+            $rental->save();
+        }
+
+        $txRef = 'BIKE-RENT-' . $rental->id . '-' . time();
+
+        $paymentData = [
+            'amount' => (float) $rental->total_amount,
+            'email' => auth()->user()->email,
+            'reference' => $txRef,  // This maps to tx_ref in the service
+            'callback_url' => route('payment.webhook'),
+            'return_url' => route('user.bike-rentals.payment.return', ['rental' => $rental->id]),
+            'first_name' => auth()->user()->name,
+            'last_name' => '',
+            'customization' => [
+                'title' => 'MZUNI UNITRAS - Bike Rental',
+                'description' => 'Bike Rental #' . $rental->rental_code . ' - MWK ' . number_format($rental->total_amount, 2),
+            ],
+            'metadata' => [
+                'rental_id' => $rental->id,
+                'type' => 'bike_rental',
+                'user_id' => auth()->id(),
+            ],
+        ];
+
+        Log::info('Initiating bike rental payment', [
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             'rental_id' => $rental->id,
             'amount' => $rental->total_amount,
             'tx_ref' => $txRef,
         ]);
 
+<<<<<<< HEAD
         $response = $this->paychangu->initializePayment($paymentData);
 
         if ($response['success']) {
@@ -298,11 +435,68 @@ class BikeRentalController extends Controller
      * Mark rental as paid (for testing or manual).
      */
     public function markAsPaid(BikeRental $rental)
+=======
+        $response = $this->payChanguService->initiatePayment($paymentData);
+
+        Log::info('PayChangu response', ['response' => $response]);
+
+        // Check for checkout URL in response [citation:1]
+        $checkoutUrl = null;
+        
+        if (isset($response['data']['checkout_url'])) {
+            $checkoutUrl = $response['data']['checkout_url'];
+        } elseif (isset($response['data']['payment_url'])) {
+            $checkoutUrl = $response['data']['payment_url'];
+        } elseif (isset($response['data']['redirect_url'])) {
+            $checkoutUrl = $response['data']['redirect_url'];
+        } elseif (isset($response['checkout_url'])) {
+            $checkoutUrl = $response['checkout_url'];
+        } elseif (isset($response['payment_url'])) {
+            $checkoutUrl = $response['payment_url'];
+        }
+
+        if ($checkoutUrl) {
+            $rental->update([
+                'payment_method' => 'paychangu',
+                'payment_reference' => $txRef,
+            ]);
+
+            session(['bike_rental_payment_' . $rental->id => $txRef]);
+
+            return redirect()->away($checkoutUrl);
+        }
+
+        $errorMessage = $response['message'] ?? $response['error'] ?? 'Payment initiation failed. Please try again.';
+        
+        Log::error('Bike rental payment initiation failed', [
+            'rental_id' => $rental->id,
+            'response' => $response,
+        ]);
+
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('error', $errorMessage);
+
+    } catch (\Exception $e) {
+        Log::error('Bike rental payment error', [
+            'rental_id' => $rental->id,
+            'error' => $e->getMessage(),
+        ]);
+
+        return redirect()->route('user.bike-rentals.show', $rental)
+            ->with('error', 'Payment error: ' . $this->payChanguService->getErrorMessage($e));
+    }
+}
+    /**
+     * Handle payment return/callback.
+     */
+    public function paymentReturn(Request $request, BikeRental $rental)
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     {
         if ($rental->user_id !== auth()->id()) {
             abort(403);
         }
 
+<<<<<<< HEAD
         if ($rental->is_paid) {
             return back()->with('error', 'This rental is already paid.');
         }
@@ -328,6 +522,126 @@ class BikeRentalController extends Controller
 
     // ============================================================
     // 6. VERIFICATION HELPERS
+=======
+        $reference = $request->query('reference') ?? session('bike_rental_payment_' . $rental->id);
+
+        if (!$reference) {
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'Payment reference not found.');
+        }
+
+        try {
+            $verification = $this->payChanguService->verifyPayment($reference);
+
+            if (in_array($verification['status'] ?? '', ['completed', 'success'])) {
+                DB::transaction(function () use ($rental, $reference) {
+                    $rental->update([
+                        'is_paid' => true,
+                        'paid_at' => now(),
+                        'payment_method' => 'paychangu',
+                        'payment_reference' => $reference,
+                    ]);
+
+                    Payment::create([
+                        'user_id' => auth()->id(),
+                        'bike_rental_id' => $rental->id,
+                        'amount' => $rental->total_amount,
+                        'payment_method' => 'paychangu',
+                        'reference' => $reference,
+                        'status' => 'completed',
+                        'paid_at' => now(),
+                    ]);
+                });
+
+                session()->forget('bike_rental_payment_' . $rental->id);
+
+                return redirect()->route('user.bike-rentals.show', $rental)
+                    ->with('success', '✅ Payment successful! Your bike rental is now complete.');
+            }
+
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'Payment verification failed. Please contact support.');
+
+        } catch (\Exception $e) {
+            Log::error('Bike rental payment return error', [
+                'rental_id' => $rental->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('user.bike-rentals.show', $rental)
+                ->with('error', 'Payment verification error: ' . $e->getMessage());
+        }
+    }
+
+/**
+ * Mark rental as paid (manual/admin override).
+ */
+public function markAsPaid(BikeRental $rental)
+{
+    if ($rental->user_id !== auth()->id()) {
+        abort(403);
+    }
+
+    if ($rental->is_paid) {
+        return back()->with('info', 'This rental is already paid.');
+    }
+
+    DB::transaction(function () use ($rental) {
+        // Update rental
+        $rental->update([
+            'is_paid' => true,
+            'paid_at' => now(),
+            'payment_method' => 'manual',
+        ]);
+
+        // Create payment record - WITHOUT transaction_id since it's nullable now
+        Payment::create([
+            'bike_rental_id' => $rental->id,
+            'user_id' => $rental->user_id,
+            'amount' => $rental->total_amount,
+            'net_amount' => $rental->total_amount,
+            'payment_method' => 'manual',
+            'reference' => 'MANUAL-' . time() . '-' . $rental->id,
+            'status' => 'completed',
+            'paid_at' => now(),
+            'payment_date' => now(),
+        ]);
+    });
+
+    return redirect()->route('user.bike-rentals.show', $rental)
+        ->with('success', '✅ Payment completed successfully! Amount: MWK ' . number_format($rental->total_amount, 2));
+}
+
+/**
+ * Activate bike via QR code scan
+ */
+public function activateByQR(Request $request)
+{
+    $qrCode = $request->query('qr') ?? $request->input('qr');
+
+    if (!$qrCode) {
+        return redirect()->route('user.bikes.index')
+            ->with('error', 'Invalid QR code.');
+    }
+
+    $bike = Bike::where('qr_code', $qrCode)->first();
+
+    if (!$bike) {
+        return redirect()->route('user.bikes.index')
+            ->with('error', 'Bike not found.');
+    }
+
+    if (!$bike->isAvailable()) {
+        return redirect()->route('user.bikes.index')
+            ->with('error', 'This bike is currently not available.');
+    }
+
+    return redirect()->route('user.bikes.rent', $bike)
+        ->with('success', 'Scan successful! Activate this bike.');
+}
+    // ============================================================
+    // 4. AJAX HELPERS
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     // ============================================================
 
     /**

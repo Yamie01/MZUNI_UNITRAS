@@ -27,6 +27,19 @@ return [
     'from' => env('AFRICASTALKING_FROM'),
 ],
 
+<<<<<<< HEAD
+=======
+'paychangu' => [
+        'private_key' => env('PAYCHANGU_API_PRIVATE_KEY'),
+        'public_key' => env('PAYCHANGU_PUBLIC_KEY'),
+        'base_url' => env('PAYCHANGU_API_BASE_URL', 'https://api.paychangu.com/'),
+        'callback_url' => env('PAYCHANGU_CALLBACK_URL'),
+        'return_url' => env('PAYCHANGU_RETURN_URL'),
+        'webhook_secret' => env('PAYCHANGU_WEBHOOK_SECRET'),
+        'currency' => env('PAYCHANGU_CURRENCY', 'MWK'),
+    ],
+    
+>>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 'app' => [
     'admin_phone' => env('ADMIN_PHONE', '+265990179811'),
 ],
