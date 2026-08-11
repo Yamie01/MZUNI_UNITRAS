@@ -17,10 +17,7 @@
         "laravel/tinker": "^2.10.1",
         "laravel/ui": "^4.6",
         "paychangu/laravel": "^1.0",
-<<<<<<< HEAD
-=======
         "simplesoftwareio/simple-qrcode": "^4.2",
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         "spatie/laravel-permission": "^6.24",
         "stripe/stripe-php": "^19.1"
     },

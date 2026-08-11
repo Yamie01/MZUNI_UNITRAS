@@ -106,8 +106,6 @@
       0 => 'Paychangu\\Laravel\\PaychanguServiceProvider',
     ),
   ),
-<<<<<<< HEAD
-=======
   'simplesoftwareio/simple-qrcode' => 
   array (
     'aliases' => 
@@ -119,7 +117,6 @@
       0 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
     ),
   ),
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
   'spatie/laravel-permission' => 
   array (
     'providers' => 

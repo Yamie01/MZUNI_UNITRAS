@@ -41,10 +41,6 @@
             position: relative;
         }
 
-<<<<<<< HEAD
-        /* Overlay for better readability */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         body::before {
             content: '';
             position: fixed;
@@ -56,24 +52,11 @@
             z-index: 0;
         }
 
-<<<<<<< HEAD
-        /* All content above overlay */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .content-wrapper {
             position: relative;
             z-index: 1;
         }
 
-<<<<<<< HEAD
-        /* ===== NAVBAR - TRANSPARENT ===== */
-        .navbar {
-            background: rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 2px 20px rgba(0,0,0,0.2);
-            padding: 0.9rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-=======
         /* ===== NAVBAR ===== */
         .navbar {
             background: rgba(4, 104, 21, 0.75) !important;
@@ -81,7 +64,6 @@
             box-shadow: 0 2px 20px rgba(0,0,0,0.2);
             padding: 0.9rem 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         }
         .navbar-brand {
             font-weight: 800;
@@ -95,10 +77,6 @@
             height: 45px;
             width: auto;
             filter: brightness(0) invert(1);
-<<<<<<< HEAD
-            /* This makes the logo white - good for dark backgrounds */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         }
         .navbar-brand .brand-text {
             color: white;
@@ -163,11 +141,7 @@
             color: var(--mzuni-dark);
         }
 
-<<<<<<< HEAD
-        /* ===== HERO - TRANSPARENT ===== */
-=======
         /* ===== HERO ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .hero {
             padding: 7rem 0 3rem;
             min-height: 600px;
@@ -182,29 +156,11 @@
         .hero-title .highlight {
             color: var(--mzuni-gold);
         }
-<<<<<<< HEAD
-        .hero-title .brand-green {
-            color: #00693E;
-            background: white;
-            padding: 2px 12px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        .hero-subtitle {
-            font-size: 1.3rem;
-            color: rgba(255,255,255,0.95);
-        }
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .hero-description {
             color: rgba(255,255,255,0.85);
             font-size: 1.1rem;
         }
 
-<<<<<<< HEAD
-        /* Trust Badge */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .trust-badge {
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
@@ -219,11 +175,7 @@
             color: var(--mzuni-gold);
         }
 
-<<<<<<< HEAD
-        /* ===== SEARCH CARD - GLASSMORPHISM ===== */
-=======
         /* ===== SEARCH CARD ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .search-card {
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(20px);
@@ -251,11 +203,7 @@
             box-shadow: 0 0 0 0.2rem rgba(0, 105, 62, 0.15);
         }
 
-<<<<<<< HEAD
-        /* ===== SERVICE TABS - TRANSPARENT ===== */
-=======
         /* ===== SERVICE TABS ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .tab-btn {
             background: rgba(255,255,255,0.12);
             backdrop-filter: blur(10px);
@@ -277,11 +225,7 @@
             border-color: white;
         }
 
-<<<<<<< HEAD
-        /* ===== SECTION HEADERS - GREEN ===== */
-=======
         /* ===== SECTION HEADERS ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .section-title {
             color: white;
             font-weight: 800;
@@ -303,15 +247,9 @@
             font-size: 1.2rem;
         }
 
-<<<<<<< HEAD
-        /* ===== RIDE & BIKE CARDS - GLASSMORPHISM ===== */
-        .ride-card, .bike-card {
-            background: rgba(255, 255, 255, 0.92);
-=======
         /* ===== RIDE & BIKE CARDS ===== */
         .ride-card, .bike-card {
             background: rgba(255, 255, 255, 0.95);
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
             backdrop-filter: blur(20px);
             color: var(--mzuni-text);
             border-radius: 20px;
@@ -330,21 +268,6 @@
             font-weight: 800;
             font-size: 1.1rem;
         }
-<<<<<<< HEAD
-        .ride-card .card-img,
-        .bike-card .card-img {
-            background: rgba(0, 105, 62, 0.08);
-            padding: 1.5rem;
-            text-align: center;
-        }
-        .ride-card .card-img i,
-        .bike-card .card-img i {
-            font-size: 3.5rem;
-            color: var(--mzuni-green);
-        }
-
-        /* ===== INFO CARDS - GLASSMORPHISM ===== */
-=======
 
         /* ===== CARD IMAGES ===== */
         .ride-card .card-img,
@@ -411,7 +334,6 @@
         }
 
         /* ===== INFO CARDS ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .info-card {
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(20px);
@@ -431,11 +353,7 @@
             color: var(--mzuni-green);
         }
 
-<<<<<<< HEAD
-        /* ===== STAT CONTAINER - TRANSPARENT ===== */
-=======
         /* ===== STAT CONTAINER ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .stat-container {
             background: rgba(0, 105, 62, 0.85);
             backdrop-filter: blur(10px);
@@ -452,11 +370,7 @@
             color: rgba(255,255,255,0.9);
         }
 
-<<<<<<< HEAD
-        /* ===== SECTIONS - TRANSPARENT ===== */
-=======
         /* ===== SECTIONS ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .services-section,
         .about-section,
         .cta-section {
@@ -468,10 +382,6 @@
             border: 1px solid rgba(255,255,255,0.08);
         }
 
-<<<<<<< HEAD
-        /* ===== CTA SECTION ===== */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .cta-section {
             text-align: center;
             padding: 3rem;
@@ -543,10 +453,6 @@
             background: var(--mzuni-green-dark);
         }
 
-<<<<<<< HEAD
-        /* ===== LOCATION INPUT GROUP ===== */
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         .location-input-group {
             display: flex;
             gap: 10px;
@@ -556,9 +462,6 @@
             flex: 1;
         }
 
-<<<<<<< HEAD
-        /* ===== FOOTER - TRANSPARENT ===== */
-=======
         /* ===== QR CODE MODAL ===== */
         #bikeQRModal .modal-content {
             border-radius: 20px;
@@ -590,7 +493,6 @@
         }
 
         /* ===== FOOTER ===== */
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         footer {
             background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(10px);
@@ -618,11 +520,6 @@
             .section-title { font-size: 1.8rem; }
             .navbar-brand img { height: 35px; }
             .navbar-brand .brand-text { font-size: 1.2rem; }
-<<<<<<< HEAD
-        }
-
-        /* ===== ANIMATIONS ===== */
-=======
             .ride-card .card-img,
             .bike-card .card-img {
                 height: 160px;
@@ -632,7 +529,6 @@
             }
         }
 
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -640,22 +536,6 @@
         .animate-fade-in {
             animation: fadeInUp 0.6s ease forwards;
         }
-<<<<<<< HEAD
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        .pulse-slow {
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        /* Search icon floating */
-        #searchCard {
-            transition: all 0.3s ease;
-        }
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     </style>
 </head>
 <body>
@@ -665,10 +545,6 @@
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
-<<<<<<< HEAD
-                <!-- MZUNI LOGO - Now properly displayed -->
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 <img src="{{ asset('images/mzuni-logo.png') }}" alt="Mzuni University" height="45">
                 <span class="brand-text">Mzuni <span class="brand-green">UNITRAS</span></span>
             </a>
@@ -703,14 +579,11 @@
                                 <li><a class="dropdown-item" href="{{ route('user.bookings.index') }}">
                                     <i class="fas fa-calendar-check me-2"></i> My Bookings
                                 </a></li>
-<<<<<<< HEAD
-=======
                                 @if(Auth::user()->isVehicleOwner())
                                     <li><a class="dropdown-item" href="{{ route('payout.dashboard') }}">
                                         <i class="fas fa-wallet me-2"></i> Payout Dashboard
                                     </a></li>
                                 @endif
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
@@ -743,20 +616,6 @@
                         Browse freely – book only when you're ready.
                     </p>
                     <div class="action-btn-group mt-4">
-<<<<<<< HEAD
-                        <a href="{{ route('user.bikes.index') }}" class="btn btn-success btn-lg">
-                            <i class="fas fa-bicycle me-2"></i> Pick a Bike
-                        </a>
-                        <a href="{{ route('search') }}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-car me-2"></i> Pick a Ride
-                        </a>
-                        @auth
-                            <a href="{{ route('offer.ride') }}" class="btn btn-warning btn-lg">
-                                <i class="fas fa-plus-circle me-2"></i> Offer a Ride
-                            </a>
-                        @else
-                            <a href="{{ route('login') }}" class="btn btn-warning btn-lg">
-=======
                         @auth
                             @if(Auth::user()->isVehicleOwner())
                                 <a href="{{ route('vehicle-owner.vehicles.create') }}" class="btn btn-success btn-lg">
@@ -795,7 +654,6 @@
                             @endif
                         @else
                             <a href="{{ route('login') }}?redirect_to={{ urlencode(route('offer.ride')) }}" class="btn btn-warning btn-lg">
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                 <i class="fas fa-plus-circle me-2"></i> Offer a Ride
                             </a>
                         @endauth
@@ -894,13 +752,6 @@
                         </button>
                     </div>
                     @auth
-<<<<<<< HEAD
-                        <a href="{{ route('offer.ride') }}" class="btn btn-warning">
-                            <i class="fas fa-plus-circle me-2"></i> Offer a Ride
-                        </a>
-                    @else
-                        <a href="{{ route('login') }}" class="btn btn-warning">
-=======
                         @if(Auth::user()->isVehicleOwner())
                             <a href="{{ route('vehicle-owner.advertisements.create') }}" class="btn btn-warning">
                                 <i class="fas fa-plus-circle me-2"></i> Publish Ride
@@ -912,15 +763,11 @@
                         @endif
                     @else
                         <a href="{{ route('login') }}?redirect_to={{ urlencode(route('offer.ride')) }}" class="btn btn-warning">
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                             <i class="fas fa-plus-circle me-2"></i> Offer a Ride
                         </a>
                     @endauth
                 </div>
 
-<<<<<<< HEAD
-                <!-- Carpool Panel -->
-=======
                 <!-- ===== SERVICE DESCRIPTION ===== -->
                 <div class="service-description">
                     <p>
@@ -933,40 +780,12 @@
                 </div>
 
                 <!-- ===== CARPOOL PANEL ===== -->
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 <div id="carpoolPanel">
                     <div class="row g-4" id="ridesList">
                         @forelse($availableVehicles as $ride)
                             @php
                                 $fromName = $ride->fromLocation->name ?? $ride->from_location ?? 'N/A';
                                 $toName   = $ride->toLocation->name ?? $ride->to_location ?? 'N/A';
-<<<<<<< HEAD
-                            @endphp
-                            <div class="col-lg-4 col-md-6 ride-item"
-                                 data-ride-id="{{ $ride->id }}"
-                                 data-from-id="{{ $ride->from_location_id ?? '' }}"
-                                 data-to-id="{{ $ride->to_location_id ?? '' }}"
-                                 data-date="{{ \Carbon\Carbon::parse($ride->departure_time)->format('Y-m-d') }}"
-                                 data-price="{{ $ride->price }}">
-                                <div class="ride-card">
-                                    <div class="card-img">
-                                        <i class="fas fa-car-side"></i>
-                                    </div>
-                                    <div class="p-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="badge badge-mzuni">
-                                                {{ ucfirst(str_replace('_', ' ', $ride->ad_type ?? 'standard')) }}
-                                            </span>
-                                            <span class="price">MWK {{ number_format($ride->price, 0) }}</span>
-                                        </div>
-                                        <h5 class="fw-bold mt-2">{{ $fromName }} → {{ $toName }}</h5>
-                                        <div class="text-muted small">
-                                            <i class="far fa-calendar-alt"></i>
-                                            {{ \Carbon\Carbon::parse($ride->departure_time)->format('d M Y, H:i') }}
-                                            <span class="ms-2"><i class="fas fa-users"></i> {{ $ride->available_seats }} seats</span>
-                                        </div>
-                                        <div class="d-grid mt-3">
-=======
                                 $ownerName = $ride->owner->name ?? 'N/A';
                                 $vehiclePlate = $ride->vehicle->license_plate ?? $ride->license_plate ?? 'N/A';
                                 $vehicleName = $ride->vehicle->name ?? $ride->vehicle_name ?? 'Vehicle';
@@ -1035,21 +854,14 @@
 
                                         <!-- ===== HOP IN BUTTON ===== -->
                                         <div class="d-grid mt-2">
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                             @auth
                                                 <a href="{{ route('user.bookings.create', $ride) }}" class="btn btn-primary">
                                                     Hop In <i class="fas fa-arrow-right ms-1"></i>
                                                 </a>
                                             @else
-<<<<<<< HEAD
-                                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
-                                                    Hop In <i class="fas fa-arrow-right ms-1"></i>
-                                                </button>
-=======
                                                 <a href="{{ route('login') }}?redirect_to={{ urlencode(route('user.bookings.create', $ride)) }}" class="btn btn-primary">
                                                     Hop In <i class="fas fa-arrow-right ms-1"></i>
                                                 </a>
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                             @endauth
                                         </div>
                                     </div>
@@ -1065,11 +877,7 @@
                     </div>
                 </div>
 
-<<<<<<< HEAD
-                <!-- Bike Panel -->
-=======
                 <!-- ===== BIKE PANEL WITH QR CODE ===== -->
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 <div id="bikePanel" style="display: none;">
                     <div class="row g-4" id="bikesList">
                         @forelse($availableBikes as $bike)
@@ -1078,16 +886,6 @@
                                  data-location-id="{{ $bike->location_id ?? '' }}"
                                  data-type="{{ strtolower($bike->type) }}">
                                 <div class="bike-card">
-<<<<<<< HEAD
-                                    <div class="card-img">
-                                        <i class="fas fa-bicycle"></i>
-                                    </div>
-                                    <div class="p-3">
-                                        <h5 class="fw-bold">{{ $bike->brand }} {{ $bike->model }}</h5>
-                                        <div class="text-muted small">{{ ucfirst($bike->type) }} Bike</div>
-                                        <div class="d-flex justify-content-between mt-2">
-                                            <span>Rate:</span>
-=======
                                     <!-- ===== BIKE IMAGE WITH FALLBACK ===== -->
                                     <div class="card-img">
                                         @if($bike->image)
@@ -1104,15 +902,11 @@
                                         <p class="text-muted small">{{ ucfirst($bike->type) }} Bike</p>
                                         <div class="d-flex justify-content-between mt-2">
                                             <span><i class="fas fa-clock"></i> Rate:</span>
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                             <strong class="price">MWK 2/min</strong>
                                         </div>
                                         <span class="badge badge-mzuni mb-2 d-inline-block">
                                             <i class="fas fa-check-circle"></i> Available now
                                         </span>
-<<<<<<< HEAD
-                                        <div class="d-grid">
-=======
                                         
                                         <!-- ===== QR CODE BUTTON + RENT BUTTON ===== -->
                                         <div class="d-grid gap-2">
@@ -1128,21 +922,14 @@
                                             @endauth
 
                                             <!-- Rent Now Button -->
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                             @auth
                                                 <a href="{{ route('user.bikes.rent', $bike) }}" class="btn btn-primary">
                                                     Rent now <i class="fas fa-arrow-right ms-1"></i>
                                                 </a>
                                             @else
-<<<<<<< HEAD
-                                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
-                                                    Rent now <i class="fas fa-arrow-right ms-1"></i>
-                                                </button>
-=======
                                                 <a href="{{ route('login') }}?redirect_to={{ urlencode(route('user.bikes.rent', $bike)) }}" class="btn btn-primary">
                                                     Rent now <i class="fas fa-arrow-right ms-1"></i>
                                                 </a>
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                                             @endauth
                                         </div>
                                     </div>
@@ -1158,11 +945,7 @@
                     </div>
                 </div>
 
-<<<<<<< HEAD
-                <!-- Info Cards -->
-=======
                 <!-- ===== INFO CARDS ===== -->
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 <div class="row mt-5">
                     <div class="col-md-4 mb-3">
                         <div class="info-card">
@@ -1220,15 +1003,9 @@
                             affordable and sustainable ecosystem.
                         </p>
                         @guest
-<<<<<<< HEAD
-                            <button class="btn btn-primary rounded-pill mt-3 px-4" data-bs-toggle="modal" data-bs-target="#loginModal">
-                                <i class="fas fa-user-plus me-2"></i> Join community
-                            </button>
-=======
                             <a href="{{ route('login') }}?redirect_to={{ urlencode(route('offer.ride')) }}" class="btn btn-primary rounded-pill mt-3 px-4">
                                 <i class="fas fa-user-plus me-2"></i> Join community
                             </a>
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                         @else
                             <a href="{{ route('dashboard') }}" class="btn btn-primary rounded-pill mt-3 px-4">
                                 <i class="fas fa-chart-pie me-2"></i> Go to Dashboard
@@ -1271,15 +1048,6 @@
                 <h3>Ready to share the <span class="highlight">journey</span>?</h3>
                 <p>Join Mzuni UNITRAS today — offer a seat, rent a bike.</p>
                 @guest
-<<<<<<< HEAD
-                    <button class="btn btn-primary rounded-pill px-5 py-3" data-bs-toggle="modal" data-bs-target="#loginModal">
-                        <i class="fas fa-user-plus me-2"></i> Create free account
-                    </button>
-                @else
-                    <a href="{{ route('dashboard') }}" class="btn btn-primary rounded-pill px-5 py-3">
-                        <i class="fas fa-chart-pie me-2"></i> Go to Dashboard
-                    </a>
-=======
                     <a href="{{ route('login') }}?redirect_to={{ urlencode(route('offer.ride')) }}" class="btn btn-primary rounded-pill px-5 py-3">
                         <i class="fas fa-user-plus me-2"></i> Create free account
                     </a>
@@ -1293,14 +1061,11 @@
                             <i class="fas fa-user-plus me-2"></i> Become an Owner
                         </a>
                     @endif
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                 @endguest
             </div>
         </div>
     </section>
 
-<<<<<<< HEAD
-=======
     <!-- ===== QR CODE MODAL ===== -->
     <div class="modal fade" id="bikeQRModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1349,7 +1114,6 @@
         </div>
     </div>
 
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
     <!-- ===== FOOTER ===== -->
     <footer class="pt-5 pb-3">
         <div class="container">
@@ -1374,11 +1138,6 @@
                 <div class="col-md-3 mb-4">
                     <h6>For Owners</h6>
                     <ul class="list-unstyled small">
-<<<<<<< HEAD
-                        <li><a href="{{ route('offer.ride') }}">Offer a Ride</a></li>
-                        <li><a href="#">Add Vehicle</a></li>
-                        <li><a href="#">My Vehicles</a></li>
-=======
                         @auth
                             @if(Auth::user()->isVehicleOwner())
                                 <li><a href="{{ route('vehicle-owner.advertisements.create') }}">Publish Ride</a></li>
@@ -1390,7 +1149,6 @@
                         @else
                             <li><a href="{{ route('login') }}?redirect_to={{ urlencode(route('offer.ride')) }}">Become an Owner</a></li>
                         @endauth
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
                     </ul>
                 </div>
                 <div class="col-md-3 mb-4">
@@ -1417,38 +1175,6 @@
             </div>
         </div>
     </footer>
-<<<<<<< HEAD
-
-    <!-- ===== LOGIN MODAL ===== -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 border-0 shadow-lg">
-                <div class="modal-body p-4 text-center">
-                    <div class="bg-warning bg-opacity-10 rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 70px; height: 70px;">
-                        <i class="fas fa-lock fa-2x" style="color: var(--mzuni-green);"></i>
-                    </div>
-                    <h4 class="fw-bold" style="color: var(--mzuni-dark);">Sign in to continue</h4>
-                    <p class="text-muted">
-                        You're one step away from booking a ride, renting a bike, or offering a seat.<br>
-                        Create an account or log in.
-                    </p>
-                    <div class="d-grid gap-2 mt-3">
-                        <a href="{{ route('login') }}" class="btn btn-primary rounded-pill py-2">
-                            <i class="fas fa-sign-in-alt me-2"></i> Log in
-                        </a>
-                        <a href="{{ route('register') }}" class="btn btn-outline-secondary rounded-pill">
-                            <i class="fas fa-user-plus me-2"></i> Create new account
-                        </a>
-                    </div>
-                    <p class="small text-muted mt-3">
-                        ⚡ Browse everything, only register to book/offer.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-=======
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 </div>
 
 <!-- ===== SCRIPTS ===== -->
@@ -1708,51 +1434,31 @@
     });
 
     // ============================================
-<<<<<<< HEAD
-    // INITIAL LOAD
-    // ============================================
-    setTimeout(filterBySearch, 500);
-=======
     // BIKE QR CODE FUNCTIONS
     // ============================================
     let currentBikeQRData = null;
 
-    /**
-     * Show QR code for a specific bike
-     */
     function showBikeQR(bikeId, bikeName) {
-        // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('bikeQRModal'));
-        
-        // Update title
         document.getElementById('bikeQRTitle').textContent = 'Scan to Activate: ' + bikeName;
-        
-        // Show loading spinner
         document.getElementById('bikeQRContainer').innerHTML = `
             <div class="spinner-border text-success" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
         `;
-
-        // Open modal
         modal.show();
 
-        // Fetch QR code from server
         fetch(`/bike/qr/${bikeId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     currentBikeQRData = data;
-                    
-                    // Display QR code
                     document.getElementById('bikeQRContainer').innerHTML = `
                         <img src="${data.qr_code_url}" alt="QR Code" class="img-fluid">
                         <p class="text-muted small mt-2">
                             <i class="fas fa-bicycle me-1"></i> Bike ID: ${data.bike_id}
                         </p>
                     `;
-                    
-                    // Update activation link
                     document.getElementById('bikeDirectActivate').href = data.activation_url;
                 } else {
                     document.getElementById('bikeQRContainer').innerHTML = `
@@ -1774,16 +1480,11 @@
             });
     }
 
-    /**
-     * Download QR code as image
-     */
     function downloadBikeQR() {
         if (!currentBikeQRData) {
             alert('No QR code to download. Please scan the QR code first.');
             return;
         }
-
-        // Create a download link
         const link = document.createElement('a');
         link.href = currentBikeQRData.qr_code_url;
         link.download = `bike-qr-${currentBikeQRData.bike_id}.png`;
@@ -1804,10 +1505,8 @@
         return /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
     }
 
-    // Check if running on mobile and add scanner hint
     document.addEventListener('DOMContentLoaded', function() {
         if (isMobile()) {
-            // Add a floating scan button for mobile
             const scanBtn = document.createElement('div');
             scanBtn.className = 'position-fixed bottom-0 end-0 m-4';
             scanBtn.style.zIndex = '1000';
@@ -1819,7 +1518,6 @@
             document.body.appendChild(scanBtn);
         }
     });
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 </script>
 </body>
 </html>

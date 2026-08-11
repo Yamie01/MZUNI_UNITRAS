@@ -10,14 +10,6 @@ class Vehicle extends Model
     use SoftDeletes;
 
     /**
-<<<<<<< HEAD
-     * Mass assignable fields
-     */
-    protected $fillable = [
-        'owner_id',
-        'vehicle_type',
-        'registration_number',
-=======
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -26,33 +18,10 @@ class Vehicle extends Model
         // Owner & Basic Info
         'owner_id',
         'name',
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
         'model',
         'make',
         'year',
         'color',
-<<<<<<< HEAD
-        'capacity',
-        'features',
-        'price_per_km',
-        'price_per_day',
-        'insurance_number',
-        'insurance_expiry',
-        'fuel_type',
-        'fuel_efficiency',
-        'status',
-        'is_approved',
-        'rejection_reason',
-        'documents',
-        'current_latitude',
-        'current_longitude',
-        'is_active',
-        'description'
-    ];
-
-    /**
-     * Attribute casting
-=======
         'license_plate',
         'registration_number',
         'seating_capacity',
@@ -105,25 +74,10 @@ class Vehicle extends Model
      * The attributes that should be cast.
      *
      * @var array<string, string>
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     protected $casts = [
         'features' => 'array',
         'documents' => 'array',
-<<<<<<< HEAD
-        'price_per_km' => 'decimal:2',
-        'price_per_day' => 'decimal:2',
-        'fuel_efficiency' => 'decimal:2',
-        'is_approved' => 'boolean',
-        'is_active' => 'boolean',
-        'insurance_expiry' => 'date',
-        'current_latitude' => 'decimal:8',
-        'current_longitude' => 'decimal:8'
-    ];
-
-    /**
-     * Vehicle Owner
-=======
         'vetting_checks' => 'array',
         'price_per_km' => 'decimal:2',
         'price_per_day' => 'decimal:2',
@@ -151,7 +105,6 @@ class Vehicle extends Model
 
     /**
      * Get the owner of the vehicle.
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function owner()
     {
@@ -159,9 +112,6 @@ class Vehicle extends Model
     }
 
     /**
-<<<<<<< HEAD
-     * Vehicle Advertisements
-=======
      * Get the user who performed the vetting.
      */
     public function vettingPerformedBy()
@@ -171,7 +121,6 @@ class Vehicle extends Model
 
     /**
      * Get the vehicle's advertisements.
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function advertisements()
     {
@@ -179,11 +128,7 @@ class Vehicle extends Model
     }
 
     /**
-<<<<<<< HEAD
-     * Vehicle Bookings
-=======
      * Get the vehicle's bookings.
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function bookings()
     {
@@ -191,11 +136,7 @@ class Vehicle extends Model
     }
 
     /**
-<<<<<<< HEAD
-     * Vehicle Reviews
-=======
      * Get the vehicle's reviews.
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function reviews()
     {
@@ -203,9 +144,6 @@ class Vehicle extends Model
     }
 
     /**
-<<<<<<< HEAD
-     * Get active advertisement
-=======
      * Get the vehicle's location history.
      */
     public function locations()
@@ -293,7 +231,6 @@ class Vehicle extends Model
 
     /**
      * Get the active advertisement for this vehicle.
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
      */
     public function getActiveAdvertisementAttribute()
     {
@@ -303,28 +240,6 @@ class Vehicle extends Model
             ->first();
     }
 
-<<<<<<< HEAD
-    // In app/Models/Vehicle.php
-    public function locations()
-    {
-        return $this->morphMany(VehicleLocation::class, 'trackable');
-    }
-
-    public function latestLocation()
-    {
-        return $this->morphOne(VehicleLocation::class, 'trackable')->latest('recorded_at');
-    }
-
-    public function fromLocation()
-{
-    return $this->belongsTo(Location::class, 'from_location_id');
-}
-
-public function toLocation()
-{
-    return $this->belongsTo(Location::class, 'to_location_id');
-}
-=======
     /**
      * Get the vehicle's display name.
      */
@@ -546,5 +461,4 @@ public function toLocation()
         }
         return 'Available';
     }
->>>>>>> b686eb4 (All updated features - Mzuni UNITRAS system)
 }
